@@ -12,7 +12,7 @@ namespace MiniMvc.Core
     {
         List<WebHostWorker> _listWorker = new List<WebHostWorker>();
 
-        int _numberOfThread = 1;
+        int _numberOfWorker = 1;
         string _domainOrId;
         int _port;
 
@@ -26,11 +26,11 @@ namespace MiniMvc.Core
             _port = port;
             return this;
         }
-        public WebHostBuilder WithThread(int numberOfThread)
+        public WebHostBuilder WithThread(int numberOfWorker)
         {
-            if (numberOfThread <= 0) numberOfThread = 1;
+            if (numberOfWorker <= 0) numberOfWorker = 3;
 
-            _numberOfThread = numberOfThread;
+            _numberOfWorker = numberOfWorker;
             return this;
         }
         public WebHostBuilder AddRoutingHandler(HttpMethod method, string urlRelative, Func<HttpRequest, Task<IResponse>> action)
@@ -44,7 +44,7 @@ namespace MiniMvc.Core
 
             Console.WriteLine($"WebHostBuilder start at: {_domainOrId}:{_port}");
 
-            for (var i = 0; i < _numberOfThread; i++)
+            for (var i = 0; i < _numberOfWorker; i++)
             {
                 _listWorker.Add(new WebHostWorker(_domainOrId, _port));
             }

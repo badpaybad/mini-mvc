@@ -2,6 +2,7 @@
 using MiniMvc.Core.HttpStandard;
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -20,7 +21,15 @@ namespace MiniMvc.Core
 
         internal static async Task<IResponse> Hanlde(HttpRequest request)
         {
-            var key = $"{request.Method.ToString().ToUpper()}:{request.UrlRelative.ToLower()}";
+            string key;
+            if (request.Error != null || string.IsNullOrEmpty(request.UrlRelative))
+            {
+                key = _handler.FirstOrDefault().Key;
+            }
+            else
+            {
+                key = $"{request.Method.ToString().ToUpper()}:{request.UrlRelative.ToLower()}";
+            }
 
             if (_handler.TryGetValue(key, out Func<HttpRequest, Task<IResponse>> action) && action != null)
             {

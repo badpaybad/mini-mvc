@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace MiniMvc.Core
 {
@@ -11,23 +12,23 @@ namespace MiniMvc.Core
         bool _isStop;
         string _domainOrIp;
         int _port;
-        MiniAsyncSocket _socket;
+        MiniSocketAsyncHandleDispatched _socket;
         public WebHostWorker(string domainOrIp, int port)
         {
             _domainOrIp = domainOrIp;
             _port = port;
-            _socket = new MiniAsyncSocket();
+            _socket = new MiniSocketAsyncHandleDispatched(_domainOrIp, port);
             _isStop = false;
-            _thread = new Thread(Loop);
+            _thread = new Thread(async () => await Loop());
         }
 
-        private void Loop()
+        private async Task Loop()
         {
             while (!_isStop)
             {
                 try
                 {
-                    _socket.StartListening(_domainOrIp, _port);
+                    await _socket.StartListening();
                 }
                 catch (Exception ex)
                 {
@@ -35,7 +36,7 @@ namespace MiniMvc.Core
                 }
                 finally
                 {
-                    Thread.Sleep(1);
+                    await Task.Delay(1);
                 }
             }
         }

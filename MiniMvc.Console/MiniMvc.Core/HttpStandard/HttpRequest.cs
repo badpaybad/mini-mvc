@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Net.Http;
 
 namespace MiniMvc.Core.HttpStandard
@@ -18,5 +19,9 @@ namespace MiniMvc.Core.HttpStandard
 
         public Dictionary<string, string> QueryParamCollection { get; set; } = new Dictionary<string, string>();
         public string HttpVersion { get; set; }
+
+        public string RemoteEndPoint { get; set; }
+
+        public Exception Error { get; set; }
     }
 }

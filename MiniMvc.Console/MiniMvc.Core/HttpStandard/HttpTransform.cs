@@ -22,86 +22,113 @@ namespace MiniMvc.Core.HttpStandard
         static Dictionary<string, HttpMethod> _httpMmethod = new Dictionary<string, HttpMethod>();
 
         public static HttpRequest BuildHttpRequest(string receivedData)
-        {
-            HttpRequest request = new HttpRequest();
-            List<string> allLine = receivedData.Split(_splitNewLine).ToList();
-            var urlRequest = allLine[0].Split(_splitSpeace);
-            if (!_httpMmethod.TryGetValue(urlRequest[0], out HttpMethod method))
+        {  
+            try
             {
-                method = HttpMethod.Get;
-            }
-            request.Method = method;
-            request.Url = urlRequest[1];
-
-            string[] urlParam = request.Url.Split(_splitQuery);
-
-            request.UrlRelative = urlParam[0];
-
-            if (urlParam.Length > 1)
-            {
-                var arrParam = urlParam[1].Split(_splitAnd);
-
-                foreach (var p in arrParam)
+                HttpRequest request = new HttpRequest();
+                List<string> allLine = receivedData.Split(_splitNewLine).ToList();
+                var urlRequest = allLine[0].Split(_splitSpeace);
+                if (!_httpMmethod.TryGetValue(urlRequest[0], out HttpMethod method))
                 {
-                    var arrVal = p.Split(_splitEqual);
-                    if (arrVal.Length > 1)
-                    {
-                        request.QueryParamCollection.Add(arrVal[0].ToLower(), arrVal[1]);
-                    }
-                    else
-                    {
-                        request.QueryParamCollection.Add(arrVal[0].ToLower(), string.Empty);
-                    }
+                    method = HttpMethod.Get;
                 }
-            }
+                request.Method = method;
+                request.Url = urlRequest[1];
 
-            request.HttpVersion = urlRequest[2];
+                string[] urlParam = request.Url.Split(_splitQuery);
 
-            var idxLineSplitBody = 0;
-            string header = string.Empty;
+                request.UrlRelative = urlParam[0];
 
-            for (var i = 1; i < allLine.Count; i++)
-            {
-                var l = allLine[i].Trim(new char[] { _splitCr, _splitNewLine, _splitSpeace });
-                int kIndex = l.IndexOf(_splitColon);
-                if (kIndex > 0)
+                if (urlParam.Length > 1)
                 {
-                    header += l + "\n";
-                    request.HeadlerCollection.Add(l.Substring(0, kIndex).ToLower(), l.Substring(kIndex + 1));
-                }
-                if (string.IsNullOrEmpty(l))
-                {
-                    idxLineSplitBody = i;
-                    break;
-                }
-            }
+                    var arrParam = urlParam[1].Split(_splitAnd);
 
-            request.Header = header;
-
-            if (allLine.Count > idxLineSplitBody)
-            {
-                var body = string.Empty;
-                for (var i = idxLineSplitBody; i < allLine.Count; i++)
-                {
-                    var l = allLine[i].Trim(new char[] { _splitSpeace, _splitCr, _splitNewLine });
-                    if (!string.IsNullOrEmpty(l))
+                    foreach (var p in arrParam)
                     {
-                        body = body + l + "\n";
+                        var arrVal = p.Split(_splitEqual);
+                        if (arrVal.Length > 1)
+                        {
+                            request.QueryParamCollection.Add(arrVal[0].ToLower(), arrVal[1]);
+                        }
+                        else
+                        {
+                            request.QueryParamCollection.Add(arrVal[0].ToLower(), string.Empty);
+                        }
                     }
                 }
-                request.Body = body;
-            }
 
-            return request;
+                request.HttpVersion = urlRequest[2].Trim(new char[] { _splitCr, _splitNewLine, _splitSpeace });
+
+                var idxLineSplitBody = 0;
+                string header = string.Empty;
+
+                for (var i = 1; i < allLine.Count; i++)
+                {
+                    var l = allLine[i].Trim(new char[] { _splitCr, _splitNewLine, _splitSpeace });
+                    int kIndex = l.IndexOf(_splitColon);
+                    if (kIndex > 0)
+                    {
+                        header += l + "\n";
+                        request.HeadlerCollection.Add(l.Substring(0, kIndex).ToLower(), l.Substring(kIndex + 1));
+                    }
+                    if (string.IsNullOrEmpty(l))
+                    {
+                        idxLineSplitBody = i;
+                        break;
+                    }
+                }
+
+                request.Header = header;
+
+                if (allLine.Count > idxLineSplitBody)
+                {
+                    var body = string.Empty;
+                    for (var i = idxLineSplitBody; i < allLine.Count; i++)
+                    {
+                        var l = allLine[i].Trim(new char[] { _splitSpeace, _splitCr, _splitNewLine });
+                        if (!string.IsNullOrEmpty(l))
+                        {
+                            body = body + l + "\n";
+                        }
+                    }
+                    request.Body = body;
+                }
+
+                request.Error = null;
+                return request;
+            }
+            catch (Exception ex)
+            {
+                return new HttpRequest { Error = ex };
+            }
         }
 
         public static HttpResponse BuildResponse(IResponse response, HttpRequest request)
         {
             HttpResponse httpResponse = new HttpResponse();
 
-            httpResponse.Header = request.Header;
+            if (request.Error == null)
+            {
+                httpResponse.Header = request.HttpVersion + " 200 OK\r\n";
+                httpResponse.Body = JsonConvert.SerializeObject(response);                
+            }
+            else
+            {
+                httpResponse.Header = request.HttpVersion + " 500 ERROR\r\n";
+                httpResponse.Body = JsonConvert.SerializeObject(request);
+            }
 
-            httpResponse.Body = JsonConvert.SerializeObject(response);
+            httpResponse.BodyInByte = Encoding.UTF8.GetBytes(httpResponse.Body);
+
+            httpResponse.Header += "Server: MiniMvc-v1" + "\r\n";
+            httpResponse.Header += "Content-Type: text/html\r\n";
+            httpResponse.Header += "Content-Length: " + httpResponse.BodyInByte.Length + "\r\n";
+            httpResponse.Header += "Connection: close" + "\r\n";
+
+            httpResponse.HeaderInByte = Encoding.UTF8.GetBytes(httpResponse.Header);
+
+            //string httpServerResponseText = httpResponse.Header + "\r\n" + httpResponse.Body;
+            //httpResponse.FullHttpResponseInByte= Encoding.UTF8.GetBytes(httpServerResponseText);
 
             return httpResponse;
         }
