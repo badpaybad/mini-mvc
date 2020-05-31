@@ -26,7 +26,7 @@ namespace MiniMvc.Core
             _port = port;
             return this;
         }
-        public WebHostBuilder WithThread(int numberOfWorker)
+        public WebHostBuilder WithNumberWorker(int numberOfWorker)
         {
             if (numberOfWorker <= 0) numberOfWorker = 3;
 
