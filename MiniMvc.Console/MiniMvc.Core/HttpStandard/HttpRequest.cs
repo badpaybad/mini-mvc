@@ -4,9 +4,10 @@ using System.Net.Http;
 
 namespace MiniMvc.Core.HttpStandard
 {
-    public class HttpRequest
+    public class HttpRequest:IDisposable
     {
         public string UrlRelative { get; set; }
+        public string UrlQueryString { get; set; }
         public string Url { get; set; }
 
         public HttpMethod Method { get; set; }
@@ -23,5 +24,9 @@ namespace MiniMvc.Core.HttpStandard
         public string RemoteEndPoint { get; set; }
 
         public Exception Error { get; set; }
+
+        public void Dispose()
+        {
+        }
     }
 }

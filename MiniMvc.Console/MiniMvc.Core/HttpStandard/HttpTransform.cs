@@ -41,6 +41,8 @@ namespace MiniMvc.Core.HttpStandard
 
                 if (urlParam.Length > 1)
                 {
+                    request.UrlQueryString = urlParam[1];
+
                     var arrParam = urlParam[1].Split(_splitAnd);
 
                     foreach (var p in arrParam)

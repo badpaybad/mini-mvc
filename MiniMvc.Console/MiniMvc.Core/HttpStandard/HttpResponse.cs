@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace MiniMvc.Core.HttpStandard
 {
-    public class HttpResponse
+    public class HttpResponse:IDisposable
     {
         //public Dictionary<string,string> HeaderCollection { get; set; }
         public string Header { get; set; }
@@ -10,6 +11,11 @@ namespace MiniMvc.Core.HttpStandard
 
         public byte[] HeaderInByte { get; set; }
         public byte[] BodyInByte { get; set; }
+
+        public void Dispose()
+        {
+            
+        }
         //public byte[] FullHttpResponseInByte { get; set; }
     }
 

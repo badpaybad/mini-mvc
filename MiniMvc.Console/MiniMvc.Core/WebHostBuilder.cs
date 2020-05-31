@@ -44,6 +44,8 @@ namespace MiniMvc.Core
 
             Console.WriteLine($"WebHostBuilder start at: {_domainOrId}:{_port}");
 
+            Console.WriteLine($"BaseDirectory: {AppDomain.CurrentDomain.BaseDirectory}");
+
             for (var i = 0; i < _numberOfWorker; i++)
             {
                 _listWorker.Add(new WebHostWorker(_domainOrId, _port));
