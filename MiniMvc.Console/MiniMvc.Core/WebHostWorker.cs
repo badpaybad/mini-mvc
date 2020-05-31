@@ -12,12 +12,12 @@ namespace MiniMvc.Core
         bool _isStop;
         string _domainOrIp;
         int _port;
-        MiniSocketAsyncHandleDispatched _socket;
+        SocketAsyncHandleDispatched _socket;
         public WebHostWorker(string domainOrIp, int port)
         {
             _domainOrIp = domainOrIp;
             _port = port;
-            _socket = new MiniSocketAsyncHandleDispatched(_domainOrIp, port);
+            _socket = new SocketAsyncHandleDispatched(_domainOrIp, port);
             _isStop = false;
             _thread = new Thread(async () => await Loop());
         }

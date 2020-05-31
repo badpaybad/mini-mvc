@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace MiniMvc.Core
 {
-    internal class MiniSocketAsyncHandleDispatched : IDisposable
+    internal class SocketAsyncHandleDispatched : IDisposable
     {
         TcpListener _tcpListener;
 
@@ -18,7 +18,7 @@ namespace MiniMvc.Core
 
         const string _eof = "<EOF>";
 
-        public MiniSocketAsyncHandleDispatched(string ipOrDomain, int port)
+        public SocketAsyncHandleDispatched(string ipOrDomain, int port,int poolSize=1000)
         {
             if (string.IsNullOrEmpty(ipOrDomain)) ipOrDomain = Dns.GetHostName();
 
@@ -39,8 +39,10 @@ namespace MiniMvc.Core
             //Socket serverListener = new Socket(ipAddress.AddressFamily,
             //    SocketType.Stream, ProtocolType.Tcp);
 
-            _tcpListener = new TcpListener(ipAddress, port);
-            _tcpListener.Start();
+            _tcpListener = new TcpListener(ipAddress, port);            
+            _tcpListener.Start(poolSize);
+
+            Console.WriteLine("Socket started");
         }
         public async Task StartListening()
         {
@@ -50,11 +52,19 @@ namespace MiniMvc.Core
                 {
                     Socket socketAccepted = _tcpListener.AcceptSocket();
 
-                    Console.WriteLine($"Received Connection from {socketAccepted.RemoteEndPoint}");
 
-                    byte[] bReceive = new byte[1024 * 1024 * 2];
+                    byte[] bReceive = new byte[1024];
 
                     int i = socketAccepted.Receive(bReceive);
+
+                    if (i == 0)
+                    {
+                        Console.WriteLine($"Received Empty from {socketAccepted.RemoteEndPoint}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Received from {socketAccepted.RemoteEndPoint}");
+                    }
 
                     byte[] requestData = new byte[i];
 
@@ -73,18 +83,21 @@ namespace MiniMvc.Core
 
                     HttpResponse response = HttpTransform.BuildResponse(processedResult, request);
 
-                    Console.WriteLine("RESPONSE");
-                    Console.WriteLine(response.Body);
-
                     try
                     {
                         if (socketAccepted.Connected)
-                            socketAccepted.Send(response.HeaderInByte);
+                            if (socketAccepted.Send(response.HeaderInByte, response.HeaderInByte.Length, SocketFlags.None) == -1)
+                            {                                
+                                Console.WriteLine($"Can not send header to {socketAccepted.RemoteEndPoint}");
+                            }
 
                         if (request.Method != HttpMethod.Head)
                         {
                             if (socketAccepted.Connected)
-                                socketAccepted.Send(response.BodyInByte);
+                                if (socketAccepted.Send(response.BodyInByte, response.BodyInByte.Length, SocketFlags.None) == -1)
+                                {
+                                    Console.WriteLine($"Can not send body to {socketAccepted.RemoteEndPoint}");
+                                }
                         }
 
                     }
@@ -109,11 +122,7 @@ namespace MiniMvc.Core
                 {
                     Console.WriteLine(ex.Message);
                     Console.WriteLine(JsonConvert.SerializeObject(ex));
-                }
-                finally
-                {
-                    Thread.Sleep(1);
-                }
+                }               
             }
         }
 

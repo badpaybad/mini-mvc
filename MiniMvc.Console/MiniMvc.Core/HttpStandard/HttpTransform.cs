@@ -22,7 +22,7 @@ namespace MiniMvc.Core.HttpStandard
         static Dictionary<string, HttpMethod> _httpMmethod = new Dictionary<string, HttpMethod>();
 
         public static HttpRequest BuildHttpRequest(string receivedData)
-        {  
+        {
             try
             {
                 HttpRequest request = new HttpRequest();
@@ -105,25 +105,26 @@ namespace MiniMvc.Core.HttpStandard
 
         public static HttpResponse BuildResponse(IResponse response, HttpRequest request)
         {
+
             HttpResponse httpResponse = new HttpResponse();
 
-            if (request.Error == null)
+            if (request.Error == null && response != null)
             {
-                httpResponse.Header = request.HttpVersion + " 200 OK\r\n";
-                httpResponse.Body = JsonConvert.SerializeObject(response);                
+                httpResponse.Header = request.HttpVersion + " 200\r\n";
+                httpResponse.Body = JsonConvert.SerializeObject(response);
             }
             else
             {
-                httpResponse.Header = request.HttpVersion + " 500 ERROR\r\n";
+                httpResponse.Header = request.HttpVersion + " 404\r\n";
                 httpResponse.Body = JsonConvert.SerializeObject(request);
             }
 
             httpResponse.BodyInByte = Encoding.UTF8.GetBytes(httpResponse.Body);
 
             httpResponse.Header += "Server: MiniMvc-v1" + "\r\n";
-            httpResponse.Header += "Content-Type: text/html\r\n";
+            httpResponse.Header += "Content-Type: application/json\r\n";
             httpResponse.Header += "Content-Length: " + httpResponse.BodyInByte.Length + "\r\n";
-            httpResponse.Header += "Connection: close" + "\r\n";
+            httpResponse.Header += "Connection: close" + "\r\n\r\n";
 
             httpResponse.HeaderInByte = Encoding.UTF8.GetBytes(httpResponse.Header);
 
@@ -133,4 +134,5 @@ namespace MiniMvc.Core.HttpStandard
             return httpResponse;
         }
     }
+
 }
