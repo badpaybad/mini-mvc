@@ -16,17 +16,17 @@ namespace MiniMvc.Core
         string _domainOrId;
         int _port;
 
-        public WebHostBuilder WithDomainOrIp(string domainOrId)
+        public WebHostBuilder WithDomainOrIp(string domainOrId="127.0.0.1")
         {
             _domainOrId = domainOrId;
             return this;
         }
-        public WebHostBuilder WithPort(int port)
+        public WebHostBuilder WithPort(int port=80)
         {
             _port = port;
             return this;
         }
-        public WebHostBuilder WithNumberWorker(int numberOfWorker)
+        public WebHostBuilder WithNumberOfWorker(int numberOfWorker)
         {
             if (numberOfWorker <= 0) numberOfWorker = 3;
 
