@@ -33,6 +33,7 @@ namespace MiniMvc.Core.HttpStandard
                 HttpRequest request = new HttpRequest();
                 List<string> allLine = receivedData.Split(_splitNewLine).ToList();
                 var urlRequest = allLine[0].Split(_splitSpeace);
+                request.Url = urlRequest[1];
 
                 string[] urlParam = request.Url.Split(_splitQuery);
 
@@ -118,7 +119,6 @@ namespace MiniMvc.Core.HttpStandard
                 request.HttpVersion = urlRequest[2].Trim(new char[] { _splitCr, _splitNewLine, _splitSpeace });
                 request.UrlRelative = urlParam[0];
                 request.Method = method;
-                request.Url = urlRequest[1];
                 request.Error = null;
 
                 request.QueryParamCollection = await tQueryParam;

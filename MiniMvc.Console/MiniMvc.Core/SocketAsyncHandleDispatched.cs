@@ -156,6 +156,10 @@ namespace MiniMvc.Core
                     Console.WriteLine(ex.Message);
                     Console.WriteLine(JsonConvert.SerializeObject(ex));
                 }
+                finally
+                {
+                    await Task.Delay(1);
+                }
             }
         }
 
