@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace MiniMvc.Core.HttpStandard
 {
-    public static class HttpTransform
+    public class HttpTransform
     {
         const char _splitCr = '\r';
         const char _splitNewLine = '\n';
@@ -121,6 +121,8 @@ namespace MiniMvc.Core.HttpStandard
                 });
 
                 HttpRequest request = new HttpRequest();
+
+                request.CreatedAt = DateTime.Now;
 
                 request.Url = requestUrl;
 
