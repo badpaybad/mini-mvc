@@ -64,7 +64,7 @@ namespace MiniMvc.Core
                 _defaultAction = action;
         }
 
-        public static async Task Ping(string ipOrDomain)
+        public static async Task Ping(string ipOrDomain, int port)
         {
             try
             {
@@ -75,7 +75,7 @@ namespace MiniMvc.Core
                     ipOrDomain = $"{ipOrDomain.Trim(new[] { ' ', ':', '/' })}";
                 }
 
-                url = $"http://{ipOrDomain}/{url.Trim(new[] { ' ', ':', '/' })}";
+                url = $"http://{ipOrDomain}:{port}/{url.Trim(new[] { ' ', ':', '/' })}";
 
                 Console.WriteLine($"Ping GET:{url}");
                 Stopwatch sw = Stopwatch.StartNew();

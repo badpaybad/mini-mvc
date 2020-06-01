@@ -24,7 +24,8 @@ namespace MiniMvc.Core.HttpStandard
 
         public Exception Error { get; internal set; }
 
-        public DateTime CreatedAt { get; set; }
+        public DateTime CreatedAt { get; internal set; } = DateTime.Now;
+
 
         public void Dispose()
         {

@@ -7,5 +7,6 @@ namespace MiniMvc.Core
 {
     public interface IResponse
     {
+       
     }
 }

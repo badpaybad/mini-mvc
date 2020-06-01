@@ -31,7 +31,7 @@ namespace MiniMvc.Core
         /// <param name="port"></param>
         /// <param name="poolSize">-1 unlimit depend on OS</param>
         /// <param name="bufferLength"></param>
-        public SocketAsyncHandleDispatched(string ipOrDomain, int port, int poolSize = -1, int bufferLength = 2048, Action onStart=null)
+        public SocketAsyncHandleDispatched(string ipOrDomain, int port, int poolSize = -1, int bufferLength = 2048, Action onStart = null)
         {
             if (string.IsNullOrEmpty(ipOrDomain)) ipOrDomain = Dns.GetHostName();
 
@@ -75,7 +75,6 @@ namespace MiniMvc.Core
                         _listTcpListener.TryAdd(key, listener);
                         Console.WriteLine($"{ip}:{port} Listening ...");
 
-                        _onStart?.Invoke();
                     }
                 }
                 catch (Exception ex)
@@ -87,6 +86,8 @@ namespace MiniMvc.Core
 
         public async Task StartAcceptIncommingAsync()
         {
+            _onStart?.Invoke();
+
             List<Task> listTask = new List<Task>();
 
             foreach (var tcp in _listTcpListener)
@@ -107,10 +108,11 @@ namespace MiniMvc.Core
                 {
                     Socket clientSocket = tcpListener.AcceptSocket();
 
-                    Task<HttpRequest> tRequest = ReadByteFromSocketAndBuildRequest(clientSocket);
+                    Task<HttpRequest> tRequest = ReadByteFromClientSocketAndBuildRequest(clientSocket);
 
                     HttpRequest request = new HttpRequest();
 
+                    request.CreatedAt = DateTime.Now;
                     request.RemoteEndPoint = clientSocket.RemoteEndPoint.ToString();
 
                     var tempRequest = await tRequest;
@@ -197,7 +199,7 @@ namespace MiniMvc.Core
             }
         }
 
-        private async Task<HttpRequest> ReadByteFromSocketAndBuildRequest(Socket socketAccepted)
+        private async Task<HttpRequest> ReadByteFromClientSocketAndBuildRequest(Socket socketAccepted)
         {
             byte[] bufferReceive = new byte[_bufferLength];
 

@@ -75,7 +75,7 @@ namespace MiniMvc.Core
             {
                 WebHostWorker worker = new WebHostWorker(_domainOrId, _port, _socketPoolSize, _socketBufferLength, async () =>
                 {
-                    await RoutingHandler.Ping(_domainOrId);
+                    await RoutingHandler.Ping(_domainOrId, _port);
                 });
 
                 _listWorker.Add(worker);

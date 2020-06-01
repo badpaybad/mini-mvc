@@ -54,6 +54,7 @@ namespace MiniMvc.HostConsole
             {
                 Title = "badpaybad@gmail.com",
                 RequestContext = request
+                
             };
         }
 
