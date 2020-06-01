@@ -12,7 +12,7 @@ namespace MiniMvc.Core
     {
         List<WebHostWorker> _listWorker = new List<WebHostWorker>();
 
-        int _numberOfWorker = 1;
+        int _numberOfWorker = 3;
         string _domainOrId;
         int _port;
 

@@ -12,7 +12,7 @@ namespace MiniMvc.HostConsole
         static void Main(string[] args)
         {
             new WebHostBuilder().WithDomainOrIp("127.0.0.1").WithPort(8888)
-                .WithNumberOfWorker(1)
+                .WithNumberOfWorker(3)
                 .AddRoutingHandler(HttpMethod.Get, "", Index)
                 .AddRoutingHandler(HttpMethod.Get, "/", Index)
                 .AddRoutingHandler(HttpMethod.Get, "/index", Index)
