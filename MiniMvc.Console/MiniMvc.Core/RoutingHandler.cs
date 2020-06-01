@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace MiniMvc.Core
 {
-    internal static class RoutingHandler
+    internal class RoutingHandler
     {
         static ConcurrentDictionary<string, Func<HttpRequest, Task<IResponse>>> _handler = new ConcurrentDictionary<string, Func<HttpRequest, Task<IResponse>>>();
 
@@ -23,7 +23,7 @@ namespace MiniMvc.Core
             string key = string.Empty;
             if (request.Error == null && !string.IsNullOrEmpty(request.UrlRelative))
             {
-                key = $"{request.Method.ToString().ToUpper()}:{request.UrlRelative.ToLower()}";
+                key = $"{request.Method}:{request.UrlRelative.ToLower()}";
             }
 
             if (!string.IsNullOrEmpty(key) && _handler.TryGetValue(key, out Func<HttpRequest, Task<IResponse>> action) && action != null)

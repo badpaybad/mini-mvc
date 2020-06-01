@@ -45,7 +45,8 @@ namespace MiniMvc.HostConsole
                 RequestContext = request
             };
         }
-                private static void TestAsync()
+        #region test async
+        private static void TestAsync()
         {
             new Thread(async () =>
             {
@@ -86,6 +87,7 @@ namespace MiniMvc.HostConsole
             await Task.Delay(1000);
             Console.WriteLine("Inside: " + msg + ": " + sw.ElapsedMilliseconds);
         }
+        #endregion
     }
 
     public class IndexResponse : IResponse

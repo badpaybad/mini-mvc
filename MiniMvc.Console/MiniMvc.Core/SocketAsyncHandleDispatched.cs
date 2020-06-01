@@ -64,8 +64,6 @@ namespace MiniMvc.Core
                     Console.WriteLine($"{ip}:{port} Error: {ex.Message}");
                 }
             }
-
-            Console.WriteLine("Socket started");
         }
 
         public async Task StartAcceptIncommingAsync()
@@ -108,15 +106,17 @@ namespace MiniMvc.Core
                     request.Url = tempRequest.Url;
                     request.UrlRelative = tempRequest.UrlRelative;
                     request.UrlQueryString = tempRequest.UrlQueryString;
-
+                    
                     //dispatched routing here
                     var processedResult = await RoutingHandler.Hanlde(request);
 
-                    HttpResponse response = await HttpTransform.BuildResponse(processedResult, request);
+                    HttpResponse response = await HttpTransform.BuildHttpResponse(processedResult, request);
 
                     await SendResponseToClientSocket(clientSocket, request, response);
 
                     await Shutdown(clientSocket, request);
+
+                    HttpLogger.Log(request);
                 }
                 catch (Exception ex)
                 {
@@ -125,7 +125,7 @@ namespace MiniMvc.Core
                 }
                 finally
                 {
-                    await Task.Delay(1);
+                    await Task.Delay(0);
                 }
             }
         }
@@ -200,13 +200,13 @@ namespace MiniMvc.Core
                     }
                 }
 
-                Console.WriteLine($"Received {received.Length} from {socketAccepted.RemoteEndPoint}");
+                //Console.WriteLine($"Received {received.Length} from {socketAccepted.RemoteEndPoint}");
 
                 string data = Encoding.UTF8.GetString(received.ToArray());
 
                 var tempReq = await HttpTransform.BuildHttpRequest(data);
 
-                Console.WriteLine($"{tempReq.Method}:{tempReq.UrlRelative}");
+                Console.WriteLine($"{tempReq.Method}:{tempReq.Url}");
 
                 return tempReq;
             }

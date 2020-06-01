@@ -154,7 +154,7 @@ namespace MiniMvc.Core.HttpStandard
             }
         }
 
-        public static async Task<HttpResponse> BuildResponse(IResponse response, HttpRequest request)
+        public static async Task<HttpResponse> BuildHttpResponse(IResponse response, HttpRequest request)
         {
             var tBody = Task.Run<KeyValuePair<string, byte[]>>(() =>
              {

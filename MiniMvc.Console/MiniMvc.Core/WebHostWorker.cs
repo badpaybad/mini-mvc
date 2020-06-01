@@ -48,7 +48,6 @@ namespace MiniMvc.Core
         public void Start()
         {
             _thread.Start();
-            Console.WriteLine("WebHostWorker Started");
         }
 
         public void Dispose()
