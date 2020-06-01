@@ -36,17 +36,20 @@ namespace MiniMvc.Core.HttpStandard
                         }
                     }
 
-                    //async write your logs by write file or db or redis or elastic search ...
-                    var dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
-                    if (Directory.Exists(dir) == false) Directory.CreateDirectory(dir);
-                    var file = Path.Combine(dir, $"{DateTime.Now.ToString("yyyyMMdd_HH")}.log");
-
-                    var logText = string.Join("\r\n", logs.Select(i => JsonConvert.SerializeObject(i)));
-
-                    using (var sw = new StreamWriter(file, true))
+                    if (logs.Count > 0)
                     {
-                        await sw.WriteLineAsync(logText);
-                        sw.Flush();
+                        //async write your logs by write file or db or redis or elastic search ...
+                        var dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+                        if (Directory.Exists(dir) == false) Directory.CreateDirectory(dir);
+                        var file = Path.Combine(dir, $"{DateTime.Now.ToString("yyyyMMdd_HH")}.log");
+
+                        var logText = string.Join("\r\n", logs.Select(i => JsonConvert.SerializeObject(i)));
+
+                        using (var sw = new StreamWriter(file, true))
+                        {
+                            await sw.WriteLineAsync(logText);
+                            sw.Flush();
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -55,7 +58,7 @@ namespace MiniMvc.Core.HttpStandard
                 }
                 finally
                 {
-                    await Task.Delay(1000);
+                    await Task.Delay(100);
                 }
             }
         }
