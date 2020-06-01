@@ -15,14 +15,20 @@ namespace MiniMvc.Core
         int _socketPoolSize;
         int _bufferLength;
         SocketAsyncHandleDispatched _socket;
-        public WebHostWorker(string domainOrIp, int port, int socketPoolSize = 1000, int bufferLength = 2048)
+
+        event Action _onSocketReady;
+
+        public WebHostWorker(string domainOrIp, int port, int socketPoolSize = -1, int bufferLength = 2048, Action onSocketReady = null)
         {
             _bufferLength = bufferLength;
             _socketPoolSize = socketPoolSize;
             _domainOrIp = domainOrIp;
             _port = port;
             _isStop = false;
-            _socket = new SocketAsyncHandleDispatched(_domainOrIp, _port, _socketPoolSize, _bufferLength);
+            _onSocketReady = onSocketReady;
+
+            _socket = new SocketAsyncHandleDispatched(_domainOrIp, _port, _socketPoolSize, _bufferLength, onSocketReady);
+
             _thread = new Thread(async () => await Loop());
         }
 

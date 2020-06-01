@@ -2,6 +2,8 @@
 using MiniMvc.Core.HttpStandard;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
@@ -13,6 +15,8 @@ namespace MiniMvc.Core
     internal class RoutingHandler
     {
         static ConcurrentDictionary<string, Func<HttpRequest, Task<IResponse>>> _handler = new ConcurrentDictionary<string, Func<HttpRequest, Task<IResponse>>>();
+
+        static List<string> _listRelativeUrl = new List<string>();
 
         static Func<HttpRequest, Task<IResponse>> _defaultAction;
 
@@ -49,6 +53,8 @@ namespace MiniMvc.Core
 
             if (_handler.ContainsKey(key)) throw new RoutingExistedException($"Existed routing: {key}");
 
+            _listRelativeUrl.Add(urlRelative);
+
             _handler[key] = action;
         }
 
@@ -57,5 +63,36 @@ namespace MiniMvc.Core
             lock (_locker)
                 _defaultAction = action;
         }
+
+        public static async Task Ping(string ipOrDomain)
+        {
+            try
+            {
+                var url = _listRelativeUrl.Where(i => i == "" || i == "/").FirstOrDefault();
+
+                if (ipOrDomain.IndexOf("://") <= 0)
+                {
+                    ipOrDomain = $"{ipOrDomain.Trim(new[] { ' ', ':', '/' })}";
+                }
+
+                url = $"http://{ipOrDomain}/{url.Trim(new[] { ' ', ':', '/' })}";
+
+                Console.WriteLine($"Ping GET:{url}");
+                Stopwatch sw = Stopwatch.StartNew();
+                using (var httpClient = new HttpClient())
+                {
+                    httpClient.BaseAddress = new Uri(url);
+                    var response = await httpClient.GetAsync(url);
+                    var content = response.Content;
+                }
+                sw.Stop();
+                Console.WriteLine($"Pong GET:{url} in: {sw.ElapsedMilliseconds} miliseconds");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
     }
 }

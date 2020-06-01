@@ -30,10 +30,8 @@ namespace MiniMvc.Core
             return this;
         }
 
-        public WebHostBuilder WithSocketPoolSize(int socketPoolSize)
+        public WebHostBuilder WithSocketPoolSize(int socketPoolSize = -1)
         {
-            if (socketPoolSize <= 0) socketPoolSize = 1000;
-
             _socketPoolSize = socketPoolSize;
             return this;
         }
@@ -75,7 +73,12 @@ namespace MiniMvc.Core
 
             for (var i = 0; i < _numberOfWorker; i++)
             {
-                _listWorker.Add(new WebHostWorker(_domainOrId, _port, _socketPoolSize, _socketBufferLength));
+                WebHostWorker worker = new WebHostWorker(_domainOrId, _port, _socketPoolSize, _socketBufferLength, async () =>
+                {
+                    await RoutingHandler.Ping(_domainOrId);
+                });
+
+                _listWorker.Add(worker);
             }
 
             foreach (var w in _listWorker)
@@ -83,7 +86,10 @@ namespace MiniMvc.Core
                 w.Start();
             }
 
+
         }
+
+
 
         public void Dispose()
         {

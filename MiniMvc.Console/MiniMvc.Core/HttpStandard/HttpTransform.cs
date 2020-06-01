@@ -126,8 +126,7 @@ namespace MiniMvc.Core.HttpStandard
 
                 request.Url = requestUrl;
 
-                string relativeUrl = urlParam[0];
-                request.UrlRelative = relativeUrl;
+                request.UrlRelative = urlParam[0];
 
                 if (urlParam.Length > 1)
                 {

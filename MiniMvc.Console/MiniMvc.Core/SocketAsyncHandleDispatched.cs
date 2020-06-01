@@ -20,14 +20,31 @@ namespace MiniMvc.Core
 
         bool _isStop = false;
         int _bufferLength = 2048;
+        int _poolSize = -1;
 
-        public SocketAsyncHandleDispatched(string ipOrDomain, int port, int poolSize = 1000, int bufferLength = 2048)
+        event Action _onStart;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="ipOrDomain"></param>
+        /// <param name="port"></param>
+        /// <param name="poolSize">-1 unlimit depend on OS</param>
+        /// <param name="bufferLength"></param>
+        public SocketAsyncHandleDispatched(string ipOrDomain, int port, int poolSize = -1, int bufferLength = 2048, Action onStart=null)
         {
             if (string.IsNullOrEmpty(ipOrDomain)) ipOrDomain = Dns.GetHostName();
+
+            if (ipOrDomain.Equals("localhost")) { ipOrDomain = "127.0.0.1"; }
+
             _bufferLength = bufferLength;
+
             IPHostEntry ipHostInfo = Dns.GetHostEntry(ipOrDomain);
 
+            _poolSize = poolSize;
             _isStop = false;
+
+            _onStart = onStart;
 
             var listIp = new List<IPAddress>();
 
@@ -35,7 +52,7 @@ namespace MiniMvc.Core
 
             if (listIp.Count == 0)
             {
-                if (ipOrDomain.Equals("127.0.0.1") || ipOrDomain.Equals("localhost"))
+                if (ipOrDomain.Equals("127.0.0.1"))
                 {
                     listIp.Add(IPAddress.Parse("127.0.0.1"));
                 }
@@ -53,10 +70,12 @@ namespace MiniMvc.Core
                     if (_listTcpListener.ContainsKey(key) == false)
                     {
                         var listener = new TcpListener(ip, port);
-                        listener.Start();
+                        listener.Start(_poolSize);
 
                         _listTcpListener.TryAdd(key, listener);
                         Console.WriteLine($"{ip}:{port} Listening ...");
+
+                        _onStart?.Invoke();
                     }
                 }
                 catch (Exception ex)
@@ -106,7 +125,7 @@ namespace MiniMvc.Core
                     request.Url = tempRequest.Url;
                     request.UrlRelative = tempRequest.UrlRelative;
                     request.UrlQueryString = tempRequest.UrlQueryString;
-                    
+
                     //dispatched routing here
                     var processedResult = await RoutingHandler.Hanlde(request);
 
@@ -158,7 +177,7 @@ namespace MiniMvc.Core
                 {
                     Console.WriteLine(socketEx.Message);
                     Console.WriteLine(JsonConvert.SerializeObject(request));
-                }               
+                }
             });
         }
 
