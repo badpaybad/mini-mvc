@@ -11,8 +11,7 @@ using System.Threading.Tasks;
 namespace MiniMvc.Core
 {
     internal static class RoutingHandler
-    {        
-
+    {
         static ConcurrentDictionary<string, Func<HttpRequest, Task<IResponse>>> _handler = new ConcurrentDictionary<string, Func<HttpRequest, Task<IResponse>>>();
 
         static Func<HttpRequest, Task<IResponse>> _defaultAction;
@@ -21,19 +20,15 @@ namespace MiniMvc.Core
 
         internal static async Task<IResponse> Hanlde(HttpRequest request)
         {
-            string key;
-            if (request.Error != null || string.IsNullOrEmpty(request.UrlRelative))
-            {
-                key = _handler.FirstOrDefault().Key;
-            }
-            else
+            string key = string.Empty;
+            if (request.Error == null && !string.IsNullOrEmpty(request.UrlRelative))
             {
                 key = $"{request.Method.ToString().ToUpper()}:{request.UrlRelative.ToLower()}";
             }
 
-            if (_handler.TryGetValue(key, out Func<HttpRequest, Task<IResponse>> action) && action != null)
+            if (!string.IsNullOrEmpty(key) && _handler.TryGetValue(key, out Func<HttpRequest, Task<IResponse>> action) && action != null)
             {
-                //may be you want do chain responsibility here
+                //may be you want do chain responsibility here, middleware here
                 var response = await action(request);
                 return response;
             }
@@ -52,7 +47,7 @@ namespace MiniMvc.Core
         {
             string key = $"{httpMethod.Method.ToUpper()}:{urlRelative.ToLower()}";
 
-            if (_handler.ContainsKey(key)) throw new RoutingExistedException($"Existed routing: {urlRelative}");
+            if (_handler.ContainsKey(key)) throw new RoutingExistedException($"Existed routing: {key}");
 
             _handler[key] = action;
         }

@@ -12,13 +12,17 @@ namespace MiniMvc.Core
         bool _isStop;
         string _domainOrIp;
         int _port;
+        int _socketPoolSize;
+        int _bufferLength;
         SocketAsyncHandleDispatched _socket;
-        public WebHostWorker(string domainOrIp, int port)
+        public WebHostWorker(string domainOrIp, int port, int socketPoolSize = 1000, int bufferLength = 2048)
         {
+            _bufferLength = bufferLength;
+            _socketPoolSize = socketPoolSize;
             _domainOrIp = domainOrIp;
             _port = port;
-            _socket = new SocketAsyncHandleDispatched(_domainOrIp, port);
             _isStop = false;
+            _socket = new SocketAsyncHandleDispatched(_domainOrIp, _port, _socketPoolSize, _bufferLength);
             _thread = new Thread(async () => await Loop());
         }
 
@@ -28,7 +32,7 @@ namespace MiniMvc.Core
             {
                 try
                 {
-                    await _socket.StartListening();
+                    await _socket.StartAcceptIncommingAsync();
                 }
                 catch (Exception ex)
                 {

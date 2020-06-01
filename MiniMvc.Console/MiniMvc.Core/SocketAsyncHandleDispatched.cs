@@ -55,7 +55,7 @@ namespace MiniMvc.Core
                         var listener = new TcpListener(ip, port);
                         listener.Start();
 
-                        _listTcpListener.TryAdd(key, listener);                        
+                        _listTcpListener.TryAdd(key, listener);
                         Console.WriteLine($"{ip}:{port} Listening ...");
                     }
                 }
@@ -67,31 +67,34 @@ namespace MiniMvc.Core
 
             Console.WriteLine("Socket started");
         }
-        public async Task StartListening()
+
+        public async Task StartAcceptIncommingAsync()
         {
             List<Task> listTask = new List<Task>();
 
             foreach (var tcp in _listTcpListener)
             {
-                listTask.Add(Task.Run(async () => await InternalStartListening(tcp.Value)));
+                //listTask.Add(Task.Run(async () => await InternalStartListeningAsync(tcp.Value)));
+                //await InternalStartAcceptIncommingAsync(tcp.Value);
+                listTask.Add(InternalStartAcceptIncommingAsync(tcp.Value));
             }
 
             await Task.WhenAll(listTask);
         }
 
-        async Task InternalStartListening(TcpListener tcpListener)
+        async Task InternalStartAcceptIncommingAsync(TcpListener tcpListener)
         {
             while (!_isStop)
             {
                 try
                 {
-                    Socket socketAccepted = tcpListener.AcceptSocket();
+                    Socket clientSocket = tcpListener.AcceptSocket();
 
-                    Task<HttpRequest> tRequest = ReadBiteFromSocketAndBuildRequest(socketAccepted);
+                    Task<HttpRequest> tRequest = ReadByteFromSocketAndBuildRequest(clientSocket);
 
                     HttpRequest request = new HttpRequest();
 
-                    request.RemoteEndPoint = socketAccepted.RemoteEndPoint.ToString();
+                    request.RemoteEndPoint = clientSocket.RemoteEndPoint.ToString();
 
                     var tempRequest = await tRequest;
 
@@ -106,50 +109,14 @@ namespace MiniMvc.Core
                     request.UrlRelative = tempRequest.UrlRelative;
                     request.UrlQueryString = tempRequest.UrlQueryString;
 
+                    //dispatched routing here
                     var processedResult = await RoutingHandler.Hanlde(request);
 
                     HttpResponse response = await HttpTransform.BuildResponse(processedResult, request);
 
-                    try
-                    {
-                        if (socketAccepted.Connected)
-                        {
-                            var rh = socketAccepted.Send(response.HeaderInByte, response.HeaderInByte.Length, SocketFlags.None);
-                            if (rh == -1)
-                            {
-                                Console.WriteLine($"Can not send header to {socketAccepted.RemoteEndPoint}");
-                            }
-                        }
+                    await SendResponseToClientSocket(clientSocket, request, response);
 
-                        if (request.Method != HttpMethod.Head)
-                        {
-                            if (socketAccepted.Connected)
-                            {
-                                var rb = socketAccepted.Send(response.BodyInByte, response.BodyInByte.Length, SocketFlags.None);
-                                if (rb == -1)
-                                {
-                                    Console.WriteLine($"Can not send body to {socketAccepted.RemoteEndPoint}");
-                                }
-                            }
-                        }
-
-                    }
-                    catch (SocketException socketEx)
-                    {
-                        Console.WriteLine(socketEx.Message);
-                        Console.WriteLine(JsonConvert.SerializeObject(request));
-                    }
-
-                    try
-                    {
-                        socketAccepted.Shutdown(SocketShutdown.Both);
-                        socketAccepted.Close();
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                        Console.WriteLine(JsonConvert.SerializeObject(request));
-                    }
+                    await Shutdown(clientSocket, request);
                 }
                 catch (Exception ex)
                 {
@@ -163,7 +130,55 @@ namespace MiniMvc.Core
             }
         }
 
-        private async Task<HttpRequest> ReadBiteFromSocketAndBuildRequest(Socket socketAccepted)
+        private static async Task SendResponseToClientSocket(Socket socketAccepted, HttpRequest request, HttpResponse response)
+        {
+            await Task.Run(() =>
+            {
+                try
+                {
+                    if (socketAccepted.Connected && response != null)
+                    {
+                        var rh = socketAccepted.Send(response.HeaderInByte, response.HeaderInByte.Length, SocketFlags.None);
+
+                        if (rh == -1)
+                        {
+                            Console.WriteLine($"Can not send header to {socketAccepted.RemoteEndPoint}");
+                        }
+                        else
+                        {
+                            var rb = socketAccepted.Send(response.BodyInByte, response.BodyInByte.Length, SocketFlags.None);
+                            if (rb == -1)
+                            {
+                                Console.WriteLine($"Can not send body to {socketAccepted.RemoteEndPoint}");
+                            }
+                        }
+                    }
+                }
+                catch (Exception socketEx)
+                {
+                    Console.WriteLine(socketEx.Message);
+                    Console.WriteLine(JsonConvert.SerializeObject(request));
+                }               
+            });
+        }
+
+        private static async Task Shutdown(Socket socketAccepted, HttpRequest request)
+        {
+            try
+            {
+                await Task.Delay(0);
+
+                socketAccepted.Shutdown(SocketShutdown.Both);
+                socketAccepted.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                Console.WriteLine(JsonConvert.SerializeObject(request));
+            }
+        }
+
+        private async Task<HttpRequest> ReadByteFromSocketAndBuildRequest(Socket socketAccepted)
         {
             byte[] bufferReceive = new byte[_bufferLength];
 
