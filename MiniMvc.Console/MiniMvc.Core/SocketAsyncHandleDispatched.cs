@@ -33,34 +33,17 @@ namespace MiniMvc.Core
         /// <param name="bufferLength"></param>
         public SocketAsyncHandleDispatched(string ipOrDomain, int port, int poolSize = -1, int bufferLength = 2048, Action onStart = null)
         {
-            if (string.IsNullOrEmpty(ipOrDomain)) ipOrDomain = Dns.GetHostName();
-
-            if (ipOrDomain.Equals("localhost")) { ipOrDomain = "127.0.0.1"; }
-
             _bufferLength = bufferLength;
-
-            IPHostEntry ipHostInfo = Dns.GetHostEntry(ipOrDomain);
 
             _poolSize = poolSize;
             _isStop = false;
 
             _onStart = onStart;
 
-            var listIp = new List<IPAddress>();
+            if (string.IsNullOrEmpty(ipOrDomain)) ipOrDomain = Dns.GetHostName();
 
-            listIp.AddRange(ipHostInfo.AddressList);
+            List<IPAddress> listIp = FindIpAddressByDomain(ipOrDomain);
 
-            if (listIp.Count == 0)
-            {
-                if (ipOrDomain.Equals("127.0.0.1"))
-                {
-                    listIp.Add(IPAddress.Parse("127.0.0.1"));
-                }
-                else
-                {
-                    listIp.Add(IPAddress.Any);
-                }
-            }
             foreach (var ip in listIp)
             {
                 try
@@ -84,6 +67,24 @@ namespace MiniMvc.Core
             }
         }
 
+        private static List<IPAddress> FindIpAddressByDomain(string ipOrDomain)
+        {
+            if (ipOrDomain.Equals("localhost")) { ipOrDomain = "127.0.0.1"; }
+            
+            IPHostEntry ipHostInfo = Dns.GetHostEntry(ipOrDomain);
+
+            var listIp = new List<IPAddress>();
+
+            listIp.AddRange(ipHostInfo.AddressList);
+
+            if (listIp.Count == 0)
+            {
+                listIp.Add(IPAddress.Any);
+            }
+
+            return listIp;
+        }
+
         public async Task StartAcceptIncommingAsync()
         {
             _onStart?.Invoke();
@@ -92,14 +93,14 @@ namespace MiniMvc.Core
 
             foreach (var tcp in _listTcpListener)
             {
-                //listTask.Add(Task.Run(async () => await InternalStartListeningAsync(tcp.Value)));
+                listTask.Add(Task.Run(async () => await InternalStartAcceptIncommingAsync(tcp.Value)));
                 //await InternalStartAcceptIncommingAsync(tcp.Value);
-                listTask.Add(InternalStartAcceptIncommingAsync(tcp.Value));
+                //listTask.Add(InternalStartAcceptIncommingAsync(tcp.Value));
             }
 
             await Task.WhenAll(listTask);
         }
-
+        
         async Task InternalStartAcceptIncommingAsync(TcpListener tcpListener)
         {
             while (!_isStop)
@@ -108,7 +109,7 @@ namespace MiniMvc.Core
                 {
                     //WebHostWorker will try accept its job
                     Socket clientSocket = tcpListener.AcceptSocket();
-                   
+
                     //parse request then dispatched by RoutingHandler
                     var t = Task.Run(async () =>
                     {
