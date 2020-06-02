@@ -37,11 +37,14 @@ namespace MiniMvc.HostConsole
                  })                
                 .Start();
 
-            var cmd = Console.ReadLine();
-
-            if (cmd == "quit")
+            while (true)
             {
-
+                var cmd = Console.ReadLine();
+                if (cmd == "quit")
+                {
+                    Environment.Exit(0);
+                    return;
+                }
             }
         }
 

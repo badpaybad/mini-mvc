@@ -143,6 +143,8 @@ namespace MiniMvc.Core
                         await Shutdown(clientSocket, request);
 
                         HttpLogger.Log(request);
+
+                        Console.WriteLine($"{request.RemoteEndPoint}@{request.CreatedAt}=>{request.Method}:{request.Url}");
                     });
                 }
                 catch (Exception ex)
@@ -227,13 +229,9 @@ namespace MiniMvc.Core
                     }
                 }
 
-                //Console.WriteLine($"Received {received.Length} from {socketAccepted.RemoteEndPoint}");
-
                 string data = Encoding.UTF8.GetString(received.ToArray());
 
                 var tempReq = await HttpTransform.BuildHttpRequest(data);
-
-                Console.WriteLine($"{tempReq.Method}:{tempReq.Url}");
 
                 return tempReq;
             }
