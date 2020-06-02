@@ -46,7 +46,7 @@ namespace MiniMvc.Core
                 }
                 finally
                 {
-                    await Task.Delay(1);
+                    await Task.Delay(0);
                 }
             }
         }

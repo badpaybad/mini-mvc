@@ -7,7 +7,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MiniMvc.Core", "MiniMvc.Cor
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MiniMvc.HostConsole", "MiniMvc.HostConsole\MiniMvc.HostConsole.csproj", "{777EB1AE-7132-42C0-9BED-8CA5875225A2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiniMvc.AspDotnetCore", "MiniMvc.AspDotnetCore\MiniMvc.AspDotnetCore.csproj", "{BBCDB9DB-1B66-4D64-853C-D4BAEE796761}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MiniMvc.AspDotnetCore", "MiniMvc.AspDotnetCore\MiniMvc.AspDotnetCore.csproj", "{BBCDB9DB-1B66-4D64-853C-D4BAEE796761}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{B3FE8B3E-D0E9-40E8-9043-D00BD4F4C36E}"
+	ProjectSection(SolutionItems) = preProject
+		..\README.md = ..\README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

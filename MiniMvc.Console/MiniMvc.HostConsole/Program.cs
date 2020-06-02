@@ -19,12 +19,22 @@ namespace MiniMvc.HostConsole
                 .WithDomainOrIp("127.0.0.1")
                 .WithPort(8888)
                 .WithNumberOfWorker(3)
-                .WithSocketBufferLength(1024 * 4)
+                .WithSocketPoolSize(-1)
+                .WithSocketBufferLength(1024*2)
+                .WithRoutingHandlerDefault(Index)
                 .WithRoutingHandler(HttpMethod.Get, "", Index)
                 .WithRoutingHandler(HttpMethod.Get, "/", Index)
                 .WithRoutingHandler(HttpMethod.Get, "/index", Index)
-                .WithRoutingHandler(HttpMethod.Get, "/about", About)
-                .WithRoutingHandlerDefault(Index)
+                .WithRoutingHandler(HttpMethod.Get, "/about", async (request) =>
+                 {
+                     await Task.Delay(0);
+                     return new IndexResponse()
+                     {
+                         Title = "badpaybad@gmail.com",
+                         RequestContext = request
+
+                     };
+                 })                
                 .Start();
 
             var cmd = Console.ReadLine();
@@ -46,17 +56,6 @@ namespace MiniMvc.HostConsole
             };
         }
 
-        static async Task<IResponse> About(HttpRequest request)
-        {
-            await Task.Delay(1);
-
-            return new IndexResponse()
-            {
-                Title = "badpaybad@gmail.com",
-                RequestContext = request
-                
-            };
-        }
 
         #region test async
         private static void TestAsync()

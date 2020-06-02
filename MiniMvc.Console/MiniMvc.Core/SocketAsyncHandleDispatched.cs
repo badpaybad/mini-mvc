@@ -106,38 +106,43 @@ namespace MiniMvc.Core
             {
                 try
                 {
+                    //WebHostWorker will try accept its job
                     Socket clientSocket = tcpListener.AcceptSocket();
+                   
+                    //parse request then dispatched by RoutingHandler
+                    var t = Task.Run(async () =>
+                    {
+                        Task<HttpRequest> tRequest = ReadByteFromClientSocketAndBuildRequest(clientSocket);
 
-                    Task<HttpRequest> tRequest = ReadByteFromClientSocketAndBuildRequest(clientSocket);
+                        HttpRequest request = new HttpRequest();
 
-                    HttpRequest request = new HttpRequest();
+                        request.CreatedAt = DateTime.Now;
+                        request.RemoteEndPoint = clientSocket.RemoteEndPoint.ToString();
 
-                    request.CreatedAt = DateTime.Now;
-                    request.RemoteEndPoint = clientSocket.RemoteEndPoint.ToString();
+                        var tempRequest = await tRequest;
 
-                    var tempRequest = await tRequest;
+                        request.Body = tempRequest.Body;
+                        request.Error = tempRequest.Error;
+                        request.Header = tempRequest.Header;
+                        request.HeadlerCollection = tempRequest.HeadlerCollection;
+                        request.HttpVersion = tempRequest.HttpVersion;
+                        request.Method = tempRequest.Method;
+                        request.QueryParamCollection = tempRequest.QueryParamCollection;
+                        request.Url = tempRequest.Url;
+                        request.UrlRelative = tempRequest.UrlRelative;
+                        request.UrlQueryString = tempRequest.UrlQueryString;
 
-                    request.Body = tempRequest.Body;
-                    request.Error = tempRequest.Error;
-                    request.Header = tempRequest.Header;
-                    request.HeadlerCollection = tempRequest.HeadlerCollection;
-                    request.HttpVersion = tempRequest.HttpVersion;
-                    request.Method = tempRequest.Method;
-                    request.QueryParamCollection = tempRequest.QueryParamCollection;
-                    request.Url = tempRequest.Url;
-                    request.UrlRelative = tempRequest.UrlRelative;
-                    request.UrlQueryString = tempRequest.UrlQueryString;
+                        //dispatched routing here
+                        var processedResult = await RoutingHandler.Hanlde(request);
 
-                    //dispatched routing here
-                    var processedResult = await RoutingHandler.Hanlde(request);
+                        HttpResponse response = await HttpTransform.BuildHttpResponse(processedResult, request);
 
-                    HttpResponse response = await HttpTransform.BuildHttpResponse(processedResult, request);
+                        await SendResponseToClientSocket(clientSocket, request, response);
 
-                    await SendResponseToClientSocket(clientSocket, request, response);
+                        await Shutdown(clientSocket, request);
 
-                    await Shutdown(clientSocket, request);
-
-                    HttpLogger.Log(request);
+                        HttpLogger.Log(request);
+                    });
                 }
                 catch (Exception ex)
                 {
