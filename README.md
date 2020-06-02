@@ -11,7 +11,7 @@ use c# TcpListener
 # compare to asp.net core
 MiniMvc.AspDotnetCore
 
-# usage 
+# usage check program.cs
 Simply defind your routing and function to handle it, your response must inherit IResponse
 
 
@@ -27,7 +27,7 @@ Simply defind your routing and function to handle it, your response must inherit
                 .WithDomainOrIp("127.0.0.1")
                 .WithPort(8888)
                 .WithNumberOfWorker(3)
-                .WithSocketPoolSize(-1)
+                .WithSocketPoolSize(int.MaxValue)
                 .WithSocketBufferLength(1024*2)
                 .WithRoutingHandlerDefault(Index)
                 .WithRoutingHandler(HttpMethod.Get, "", Index)
@@ -44,3 +44,14 @@ Simply defind your routing and function to handle it, your response must inherit
                      };
                  })                
                 .Start();
+
+                 static async Task<IResponse> Index(HttpRequest request)
+                {
+                    await Task.Delay(1);
+
+                    return new IndexResponse()
+                    {
+                        Title = "Hello world",
+                        RequestContext = request
+                    };
+                }

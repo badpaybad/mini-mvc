@@ -15,7 +15,7 @@ namespace MiniMvc.Core
         int _numberOfWorker = 3;
         string _domainOrId;
         int _port;
-        int _socketPoolSize = 1000;
+        int _socketPoolSize = 0;
         int _socketBufferLength = 2048;
 
         public WebHostBuilder WithDomainOrIp(string domainOrId = "127.0.0.1")
@@ -30,8 +30,9 @@ namespace MiniMvc.Core
             return this;
         }
 
-        public WebHostBuilder WithSocketPoolSize(int socketPoolSize = -1)
+        public WebHostBuilder WithSocketPoolSize(int socketPoolSize = 0)
         {
+            if (socketPoolSize < 0) socketPoolSize = int.MaxValue;
             _socketPoolSize = socketPoolSize;
             return this;
         }
@@ -75,7 +76,7 @@ namespace MiniMvc.Core
             {
                 WebHostWorker worker = new WebHostWorker(_domainOrId, _port, _socketPoolSize, _socketBufferLength, async () =>
                 {
-                    await RoutingHandler.Ping(_domainOrId, _port);
+                   // await RoutingHandler.Ping(_domainOrId, _port);
                 });
 
                 _listWorker.Add(worker);

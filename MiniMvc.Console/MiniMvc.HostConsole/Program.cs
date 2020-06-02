@@ -19,7 +19,7 @@ namespace MiniMvc.HostConsole
                 .WithDomainOrIp("127.0.0.1")
                 .WithPort(8888)
                 .WithNumberOfWorker(3)
-                .WithSocketPoolSize(-1)
+                .WithSocketPoolSize(int.MaxValue)
                 .WithSocketBufferLength(1024*2)
                 .WithRoutingHandlerDefault(Index)
                 .WithRoutingHandler(HttpMethod.Get, "", Index)

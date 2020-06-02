@@ -18,7 +18,7 @@ namespace MiniMvc.Core
 
         event Action _onSocketReady;
 
-        public WebHostWorker(string domainOrIp, int port, int socketPoolSize = -1, int bufferLength = 2048, Action onSocketReady = null)
+        public WebHostWorker(string domainOrIp, int port, int socketPoolSize = 0, int bufferLength = 2048, Action onSocketReady = null)
         {
             _bufferLength = bufferLength;
             _socketPoolSize = socketPoolSize;
