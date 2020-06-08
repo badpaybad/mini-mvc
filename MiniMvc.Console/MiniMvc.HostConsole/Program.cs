@@ -24,11 +24,11 @@ namespace MiniMvc.HostConsole
                     await Task.Delay(0);
                     return new IndexResponse()
                     {
-                        Title = "Onregister Received: " + request.Body,
+                        Title = "OnServerReceived: " + request.Body,
 
                     };
                 })
-                .WithNumberOfWorker(1)
+                .WithNumberOfWorker(3)
                 .WithSocketPoolSize(int.MaxValue)
                 .WithSocketBufferLength(1024 * 2)
                 .WithRoutingHandlerDefault(Index)
@@ -52,9 +52,9 @@ namespace MiniMvc.HostConsole
                 while (true)
                 {
                     // .WithWebSocketHandle("/channel1", async (request) // to create server channel
-                    // client check in /public/TestWebsocket.html
-                    
-                    //server push to client
+                    // client usage /public/TestWebsocket.html
+
+                    //server push to client usage, you can use this everywhere in your prj
                     WebsocketServerHub.Publish("/channel1", new IndexResponse
                     {
                         Title = "Push from server at " + DateTime.Now

@@ -14,12 +14,20 @@ namespace MiniMvc.Core
 {
     public class WebsocketServerHub
     {
-        static ConcurrentDictionary<string, KeyValuePair<TcpClient, NetworkStream>> _channel =
-            new ConcurrentDictionary<string, KeyValuePair<TcpClient, NetworkStream>>();
+        static ConcurrentDictionary<string, BlockingCollection<KeyValuePair<TcpClient, NetworkStream>>> _channel =
+          new ConcurrentDictionary<string, BlockingCollection<KeyValuePair<TcpClient, NetworkStream>>>();
 
         internal static void Register(string urlRelative, TcpClient tcpClient, NetworkStream clientStream)
         {
-            _channel[urlRelative] = new KeyValuePair<TcpClient, NetworkStream>(tcpClient, clientStream);
+
+            if (!_channel.TryGetValue(urlRelative, out BlockingCollection<KeyValuePair<TcpClient, NetworkStream>> clients)
+                || clients == null)
+            {
+                clients = new BlockingCollection<KeyValuePair<TcpClient, NetworkStream>>();
+                _channel.TryAdd(urlRelative, clients);
+            }
+
+            clients.Add(new KeyValuePair<TcpClient, NetworkStream>(tcpClient, clientStream));
         }
 
         internal static async Task<HttpRequest> DoHandShaking(TcpClient clientWssAccepted, NetworkStream clientStream, byte[] wssReceivedBytes)
@@ -110,25 +118,49 @@ namespace MiniMvc.Core
 
         public static void Publish(string urlRelative, IResponse response)
         {
-            if (_channel.TryGetValue(urlRelative, out KeyValuePair<TcpClient, NetworkStream> client)
-                && client.Key != null && client.Value != null)
+            if (_channel.TryGetValue(urlRelative, out BlockingCollection<KeyValuePair<TcpClient, NetworkStream>> clients)
+                && clients != null)
             {
-                if (!client.Key.Client.Connected)
+                List<Task> tasks = new List<Task>();
+                foreach (var client in clients)
                 {
-                    WebsocketServerHub.Remove(urlRelative);
-                    return;
+                    tasks.Add(Task.Run(() =>
+                   {
+                       if (!client.Key.Client.Connected)
+                       {
+                           WebsocketServerHub.Remove(urlRelative);
+                           return;
+                       }
+                       WebsocketServerHub.Send(client.Key, client.Value, response);
+                   }));
                 }
-                WebsocketServerHub.Send(client.Key, client.Value, response);
+
+                //want to make sure sent all to client 
+                //Task.WhenAll(tasks).GetAwaiter().GetResult();
             }
         }
 
         internal static void Remove(string urlRelative)
         {
-            _channel.TryRemove(urlRelative, out KeyValuePair<TcpClient, NetworkStream> old);
+            _channel.TryRemove(urlRelative, out BlockingCollection<KeyValuePair<TcpClient, NetworkStream>> olds);
+            if (olds == null) return;
+
             try
             {
-                old.Key.Client.Shutdown(SocketShutdown.Both);
-                old.Key.Client.Close();
+                List<Task> tasks = new List<Task>();
+                foreach (var old in olds)
+                {
+                    tasks.Add(Task.Run(() =>
+                    {
+                        if (!old.Key.Client.Connected)
+                        {
+                            old.Key.Client.Shutdown(SocketShutdown.Both);
+                            old.Key.Client.Close();
+                        }
+                    }));
+                }
+
+                //Task.WhenAll(tasks).GetAwaiter().GetResult();
             }
             catch { }
 
