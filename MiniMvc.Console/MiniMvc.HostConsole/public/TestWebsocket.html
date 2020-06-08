@@ -39,14 +39,14 @@
         output = document.querySelector("#output"),
         textarea = document.querySelector("textarea"),
         // wsUri = "ws://echo.websocket.org/",
-        wsUri = "ws://127.0.0.1/",
+        wsUri = "ws://127.0.0.1:9999/channel1",
         websocket = new WebSocket(wsUri);
 
     button.addEventListener("click", onClickButton);
 
     websocket.onopen = function (e) {
         writeToScreen("CONNECTED");
-        doSend("WebSocket rocks");
+        doSend("WebSocket ping");
     };
 
     websocket.onclose = function (e) {

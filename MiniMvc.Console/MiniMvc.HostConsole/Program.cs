@@ -18,9 +18,20 @@ namespace MiniMvc.HostConsole
             new WebHostBuilder()
                 .WithDomainOrIp("127.0.0.1")
                 .WithPort(8888)
-                .WithNumberOfWorker(3)
+                .WithWssPort(9999)
+                .WithWebSocketHandle("/channel1", async (request) =>
+                {
+                    await Task.Delay(0);
+                    return new IndexResponse()
+                    {
+                        Title = "Received: " + request.Body,
+                        RequestContext = request
+
+                    };
+                })
+                .WithNumberOfWorker(1)
                 .WithSocketPoolSize(int.MaxValue)
-                .WithSocketBufferLength(1024*2)
+                .WithSocketBufferLength(1024 * 2)
                 .WithRoutingHandlerDefault(Index)
                 .WithRoutingHandler(HttpMethod.Get, "", Index)
                 .WithRoutingHandler(HttpMethod.Get, "/", Index)
@@ -34,7 +45,7 @@ namespace MiniMvc.HostConsole
                          RequestContext = request
 
                      };
-                 })                
+                 })
                 .Start();
 
             while (true)

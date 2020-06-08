@@ -71,7 +71,12 @@ namespace MiniMvc.Core
 
             return this;
         }
+        public WebHostBuilder WithWebSocketHandle(string urlRelative, Func<HttpRequest, Task<IResponse>> action)
+        {
+            RoutingHandler.RegisterWss(urlRelative, action);
 
+            return this;
+        }
         public void Start()
         {
             Console.WriteLine($"BaseDirectory: {AppDomain.CurrentDomain.BaseDirectory}");
@@ -79,14 +84,24 @@ namespace MiniMvc.Core
 
             for (var i = 0; i < _numberOfWorker; i++)
             {
-                WebHostWorker worker = new WebHostWorker(_domainOrId, _port, _socketPoolSize, _socketBufferLength, async () =>
+                WebHostWorker httpWorker = new WebHostWorker(_domainOrId, _port, _socketPoolSize, _socketBufferLength, async () =>
                 {
-                   await RoutingHandler.Ping(_domainOrId, _port);
-                });
+                    await RoutingHandler.Ping(_domainOrId, _port);
+                }, false);
 
-                _listWorker.Add(worker);
+                _listWorker.Add(httpWorker);
+
+                if (_wssPort != null)
+                {
+                    WebHostWorker wssWorker = new WebHostWorker(_domainOrId, _wssPort.Value, _socketPoolSize, _socketBufferLength, async () =>
+                    {
+                        await Task.Delay(100);
+                    }, true);
+
+                    _listWorker.Add(wssWorker);
+                }
             }
-
+            
             foreach (var w in _listWorker)
             {
                 w.Start();

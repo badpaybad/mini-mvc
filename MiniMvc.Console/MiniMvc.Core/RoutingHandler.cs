@@ -18,11 +18,13 @@ namespace MiniMvc.Core
 
         static List<string> _listRelativeUrl = new List<string>();
 
-        static Func<HttpRequest, Task<IResponse>> _defaultAction;
+        static Func<HttpRequest, Task<IResponse>> _httpDefaultAction;
+
+        static Func<HttpRequest, Task<IResponse>> _wssDefaultAction;
 
         static object _locker = new object();
 
-        internal static async Task<IResponse> Hanlde(HttpRequest request)
+        internal static async Task<IResponse> Handle(HttpRequest request)
         {
             string key = string.Empty;
             if (request.Error == null && !string.IsNullOrEmpty(request.UrlRelative))
@@ -37,9 +39,9 @@ namespace MiniMvc.Core
                 return response;
             }
 
-            if (_defaultAction != null)
+            if (_httpDefaultAction != null)
             {
-                var response = await _defaultAction(request);
+                var response = await _httpDefaultAction(request);
                 return response;
             }
 
@@ -47,6 +49,31 @@ namespace MiniMvc.Core
             return null;
         }
 
+        internal static async Task<IResponse> HandleWss(HttpRequest request)
+        {
+            string key = string.Empty;
+            if (request.Error == null && !string.IsNullOrEmpty(request.UrlRelative))
+            {
+                key = $"wss:{request.UrlRelative.ToLower()}";
+            }
+
+            if (!string.IsNullOrEmpty(key) && _handler.TryGetValue(key, out Func<HttpRequest, Task<IResponse>> action) && action != null)
+            {
+                //may be you want do chain responsibility here, middleware here
+                var response = await action(request);
+                return response;
+            }
+
+            if (_wssDefaultAction != null)
+            {
+                var response = await _wssDefaultAction(request);
+                return response;
+            }
+
+            //may be 404 page
+            return null;
+
+        }
         public static void Register(HttpMethod httpMethod, string urlRelative, Func<HttpRequest, Task<IResponse>> action)
         {
             string key = $"{httpMethod.Method.ToUpper()}:{urlRelative.ToLower()}";
@@ -61,7 +88,18 @@ namespace MiniMvc.Core
         public static void RegisterDefaultResponse(Func<HttpRequest, Task<IResponse>> action)
         {
             lock (_locker)
-                _defaultAction = action;
+                _httpDefaultAction = action;
+        }
+
+        public static void RegisterWss(string urlRelative, Func<HttpRequest, Task<IResponse>> action)
+        {
+            string key = $"wss:{urlRelative.ToLower()}";
+
+            if (_handler.ContainsKey(key)) throw new RoutingExistedException($"Existed routing: {key}");
+
+            _listRelativeUrl.Add(urlRelative);
+
+            _handler[key] = action;
         }
 
         public static async Task Ping(string ipOrDomain, int port)
