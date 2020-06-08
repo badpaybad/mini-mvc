@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace MiniMvc.Core
 {
-    internal class SocketAsyncHandleDispatched : IDisposable
+    internal class HttpSocketAsyncHandleDispatched : IDisposable
     {
         static ConcurrentDictionary<string, TcpListener> _listTcpListener = new ConcurrentDictionary<string, TcpListener>();
 
@@ -31,7 +31,7 @@ namespace MiniMvc.Core
         /// <param name="port"></param>
         /// <param name="poolSize">-1 unlimit depend on OS</param>
         /// <param name="bufferLength"></param>
-        public SocketAsyncHandleDispatched(string ipOrDomain, int port, int poolSize = -1, int bufferLength = 2048, Action onStart = null)
+        public HttpSocketAsyncHandleDispatched(string ipOrDomain, int port, int poolSize = -1, int bufferLength = 2048, Action onStart = null)
         {
             _bufferLength = bufferLength;
 

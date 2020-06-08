@@ -15,6 +15,7 @@ namespace MiniMvc.Core
         int _numberOfWorker = 3;
         string _domainOrId;
         int _port;
+        int _wssPort;
         int _socketPoolSize = 0;
         int _socketBufferLength = 2048;
 
@@ -29,7 +30,11 @@ namespace MiniMvc.Core
             _port = port;
             return this;
         }
-
+        public WebHostBuilder WithWssPort(int port = 8888)
+        {
+            _wssPort = port;
+            return this;
+        }
         public WebHostBuilder WithSocketPoolSize(int socketPoolSize = 0)
         {
             if (socketPoolSize < 0) socketPoolSize = int.MaxValue;

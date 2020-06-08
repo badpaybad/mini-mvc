@@ -14,7 +14,7 @@ namespace MiniMvc.Core
         int _port;
         int _socketPoolSize;
         int _bufferLength;
-        SocketAsyncHandleDispatched _socket;
+        HttpSocketAsyncHandleDispatched _socket;
 
         event Action _onSocketReady;
 
@@ -27,7 +27,7 @@ namespace MiniMvc.Core
             _isStop = false;
             _onSocketReady = onSocketReady;
 
-            _socket = new SocketAsyncHandleDispatched(_domainOrIp, _port, _socketPoolSize, _bufferLength, onSocketReady);
+            _socket = new HttpSocketAsyncHandleDispatched(_domainOrIp, _port, _socketPoolSize, _bufferLength, onSocketReady);
 
             _thread = new Thread(async () => await Loop());
         }
