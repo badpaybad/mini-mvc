@@ -11,4 +11,10 @@
     <ProjectReference Include="..\MiniMvc.Core\MiniMvc.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="public\TestWebsocket.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
