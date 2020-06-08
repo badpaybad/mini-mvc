@@ -91,9 +91,9 @@ namespace MiniMvc.Core
 
                 var wssResponse = await RoutingHandler.HandleWss(new HttpRequest()
                 {
-                    UrlRelative= firstRequestOfHandShake.UrlRelative,
-                    Method="wss",
-                    CreatedAt= DateTime.Now,                    
+                    UrlRelative = firstRequestOfHandShake.UrlRelative,
+                    Method = "wss",
+                    CreatedAt = DateTime.Now,
                     Body = receivedFromClient,
                     RemoteEndPoint = clientWssAccepted.Client.RemoteEndPoint.ToString()
                 });
@@ -113,15 +113,35 @@ namespace MiniMvc.Core
             if (_channel.TryGetValue(urlRelative, out KeyValuePair<TcpClient, NetworkStream> client)
                 && client.Key != null && client.Value != null)
             {
-                Send(client.Key, client.Value, response);
+                if (!client.Key.Client.Connected)
+                {
+                    WebsocketServerHub.Remove(urlRelative);
+                    return;
+                }
+                WebsocketServerHub.Send(client.Key, client.Value, response);
             }
+        }
+
+        internal static void Remove(string urlRelative)
+        {
+            _channel.TryRemove(urlRelative, out KeyValuePair<TcpClient, NetworkStream> old);
+            try
+            {
+                old.Key.Client.Shutdown(SocketShutdown.Both);
+                old.Key.Client.Close();
+            }
+            catch { }
+
         }
 
         internal static void Send(TcpClient tcpClient, NetworkStream clientStream, IResponse response)
         {
             try
             {
-
+                if (!tcpClient.Client.Connected)
+                {
+                    return;
+                }
                 var buf = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response));
                 int frameSize = 64;
 

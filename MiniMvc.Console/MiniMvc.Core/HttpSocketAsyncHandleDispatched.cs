@@ -122,6 +122,16 @@ namespace MiniMvc.Core
                         {
                             while (!_isStop)
                             {
+                                if (!clientWssAccepted.Client.Connected)
+                                {
+                                    if (wss1stRequestOfHandShake != null)
+                                    {
+                                        WebsocketServerHub.Remove(wss1stRequestOfHandShake.UrlRelative);
+                                    }
+                                    await Shutdown(clientWssAccepted.Client, wss1stRequestOfHandShake);
+                                    break;
+                                }
+
                                 while (!clientStream.DataAvailable) ;
                                 while (clientWssAccepted.Available < 3) ; // match against "get"
 
@@ -222,7 +232,8 @@ namespace MiniMvc.Core
                 catch (Exception socketEx)
                 {
                     Console.WriteLine(socketEx.Message);
-                    Console.WriteLine(JsonConvert.SerializeObject(request));
+                    if (request != null)
+                        Console.WriteLine(JsonConvert.SerializeObject(request));
                 }
             });
         }
@@ -239,7 +250,8 @@ namespace MiniMvc.Core
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
-                Console.WriteLine(JsonConvert.SerializeObject(request));
+                if (request != null)
+                    Console.WriteLine(JsonConvert.SerializeObject(request));
             }
         }
 

@@ -24,8 +24,7 @@ namespace MiniMvc.HostConsole
                     await Task.Delay(0);
                     return new IndexResponse()
                     {
-                        Title = "Received: " + request.Body,
-                        RequestContext = request
+                        Title = "Onregister Received: " + request.Body,
 
                     };
                 })
@@ -47,6 +46,22 @@ namespace MiniMvc.HostConsole
                      };
                  })
                 .Start();
+
+            new Thread(() =>
+            {
+                while (true)
+                {
+                    // .WithWebSocketHandle("/channel1", async (request) // to create server channel
+                    // client check in /public/TestWebsocket.html
+                    
+                    //server push to client
+                    WebsocketServerHub.Publish("/channel1", new IndexResponse
+                    {
+                        Title = "Push from server at " + DateTime.Now
+                    });
+                    Thread.Sleep(5000);
+                }
+            }).Start();
 
             while (true)
             {
