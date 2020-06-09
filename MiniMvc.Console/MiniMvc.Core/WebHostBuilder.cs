@@ -58,14 +58,14 @@ namespace MiniMvc.Core
             return this;
         }
 
-        public WebHostBuilder WithRoutingHandler(HttpMethod method, string urlRelative, Func<HttpRequest, Task<IResponse>> action)
+        public WebHostBuilder WithRoutingHandle(HttpMethod method, string urlRelative, Func<HttpRequest, Task<IResponse>> action)
         {
             RoutingHandler.Register(method, urlRelative, action);
 
             return this;
         }
 
-        public WebHostBuilder WithRoutingHandlerDefault(Func<HttpRequest, Task<IResponse>> action)
+        public WebHostBuilder WithRoutingHandleDefault(Func<HttpRequest, Task<IResponse>> action)
         {
             RoutingHandler.RegisterDefaultResponse(action);
 
@@ -109,9 +109,7 @@ namespace MiniMvc.Core
 
 
         }
-
-
-
+        
         public void Dispose()
         {
             foreach (var w in _listWorker)

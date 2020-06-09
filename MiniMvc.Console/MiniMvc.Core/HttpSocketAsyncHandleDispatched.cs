@@ -106,6 +106,8 @@ namespace MiniMvc.Core
 
         async Task InternalStartAcceptIncommingAsync(TcpListener tcpListener)
         {
+            //you may want to do with ssl
+            //https://docs.microsoft.com/en-us/dotnet/api/system.net.security.sslstream?redirectedfrom=MSDN&view=netcore-3.1
             while (!_isStop)
             {
                 try

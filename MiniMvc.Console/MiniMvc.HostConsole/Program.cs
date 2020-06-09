@@ -31,11 +31,11 @@ namespace MiniMvc.HostConsole
                 .WithNumberOfWorker(3)
                 .WithSocketPoolSize(int.MaxValue)
                 .WithSocketBufferLength(1024 * 2)
-                .WithRoutingHandlerDefault(Index)
-                .WithRoutingHandler(HttpMethod.Get, "", Index)
-                .WithRoutingHandler(HttpMethod.Get, "/", Index)
-                .WithRoutingHandler(HttpMethod.Get, "/index", Index)
-                .WithRoutingHandler(HttpMethod.Get, "/about", async (request) =>
+                .WithRoutingHandleDefault(Index)
+                .WithRoutingHandle(HttpMethod.Get, "", Index)
+                .WithRoutingHandle(HttpMethod.Get, "/", Index)
+                .WithRoutingHandle(HttpMethod.Get, "/index", Index)
+                .WithRoutingHandle(HttpMethod.Get, "/about", async (request) =>
                  {
                      await Task.Delay(0);
                      return new IndexResponse()
