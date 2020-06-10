@@ -1,5 +1,5 @@
 # mini-mvc
-Try to build something dispatched url to an function
+webhost simple support http, websocket , sometime you dont need build asp.net
 
 # startup project 
 MiniMvc.HostConsole
