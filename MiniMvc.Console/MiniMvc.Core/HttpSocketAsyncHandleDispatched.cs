@@ -116,7 +116,7 @@ namespace MiniMvc.Core
                     if (_isWss)
                     {
                         //https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_server
-                        TcpClient clientWssAccepted = tcpListener.AcceptTcpClient();
+                        TcpClient clientWssAccepted = await tcpListener.AcceptTcpClientAsync();
                         NetworkStream clientStream = clientWssAccepted.GetStream();
                         HttpRequest wss1stRequestOfHandShake = null;
 
@@ -138,7 +138,7 @@ namespace MiniMvc.Core
                                 while (clientWssAccepted.Available < 3) ; // match against "get"
 
                                 byte[] wssReceivedBytes = new byte[clientWssAccepted.Available];
-                                clientStream.Read(wssReceivedBytes, 0, clientWssAccepted.Available);
+                                await clientStream.ReadAsync(wssReceivedBytes, 0, clientWssAccepted.Available);
 
                                 var handShakeRequest = await WebsocketServerHub.DoHandShaking(clientWssAccepted, clientStream, wssReceivedBytes);
 
@@ -157,7 +157,7 @@ namespace MiniMvc.Core
                     }
 
                     //WebHostWorker will try accept its job
-                    Socket clientSocket = tcpListener.AcceptSocket();
+                    Socket clientSocket = await tcpListener.AcceptSocketAsync();
                     //parse request then dispatched by RoutingHandler
                     var t = Task.Run(async () =>
                     {

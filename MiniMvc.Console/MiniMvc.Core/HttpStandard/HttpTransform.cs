@@ -46,25 +46,25 @@ namespace MiniMvc.Core.HttpStandard
                 var firstLineRequest = allLine[0].Split(_splitSpeace);
 
                 var theader = Task<KeyValuePair<string, Dictionary<string, string>>>.Run(() =>
-                  {
-                      string header = string.Empty;
-                      Dictionary<string, string> headerCollection = new Dictionary<string, string>();
-                      for (var i = 1; i < allLine.Count; i++)
-                      {
-                          var l = allLine[i].Trim(new char[] { _splitCr, _splitNewLine, _splitSpeace });
-                          int kIndex = l.IndexOf(_splitColon);
-                          if (kIndex > 0)
-                          {
-                              header += l + "\n";
-                              headerCollection[l.Substring(0, kIndex).ToLower()] = l.Substring(kIndex + 1);
-                          }
-                          if (string.IsNullOrEmpty(l))
-                          {
-                              break;
-                          }
-                      }
-                      return new KeyValuePair<string, Dictionary<string, string>>(header, headerCollection);
-                  });
+                {
+                    string header = string.Empty;
+                    Dictionary<string, string> headerCollection = new Dictionary<string, string>();
+                    for (var i = 1; i < allLine.Count; i++)
+                    {
+                        var l = allLine[i].Trim(new char[] { _splitCr, _splitNewLine, _splitSpeace });
+                        int kIndex = l.IndexOf(_splitColon);
+                        if (kIndex > 0)
+                        {
+                            header += l + "\n";
+                            headerCollection[l.Substring(0, kIndex).ToLower()] = l.Substring(kIndex + 1);
+                        }
+                        if (string.IsNullOrEmpty(l))
+                        {
+                            break;
+                        }
+                    }
+                    return new KeyValuePair<string, Dictionary<string, string>>(header, headerCollection);
+                });
 
                 string requestUrl = firstLineRequest[1];
                 string[] urlParam = requestUrl.Split(_splitQuery);
@@ -95,21 +95,23 @@ namespace MiniMvc.Core.HttpStandard
 
                 var tbody = Task<string>.Run(() =>
                 {
+                    var trimedAlline = allLine.Select(i => i.Trim(new char[] { _splitSpeace, _splitCr, _splitNewLine })).ToList();
+
                     var idxLineSplitBody = 0;
-                    for (var i = 1; i < allLine.Count; i++)
+                    for (var i = 1; i < trimedAlline.Count; i++)
                     {
-                        if (string.IsNullOrEmpty(allLine[i]))
+                        if (string.IsNullOrEmpty(trimedAlline[i]))
                         {
                             idxLineSplitBody = i;
                             break;
                         }
                     }
                     var body = string.Empty;
-                    if (allLine.Count > idxLineSplitBody)
+                    if (trimedAlline.Count > idxLineSplitBody)
                     {
-                        for (var i = idxLineSplitBody; i < allLine.Count; i++)
+                        for (var i = idxLineSplitBody; i < trimedAlline.Count; i++)
                         {
-                            var l = allLine[i].Trim(new char[] { _splitSpeace, _splitCr, _splitNewLine });
+                            var l = trimedAlline[i];
                             if (!string.IsNullOrEmpty(l))
                             {
                                 body = body + l + "\n";
@@ -138,7 +140,7 @@ namespace MiniMvc.Core.HttpStandard
                 request.HttpVersion = firstLineRequest[2].Trim(new char[] { _splitCr, _splitNewLine, _splitSpeace });
 
                 request.Error = null;
-                
+
                 var theaderResult = await theader;
                 request.Header = theaderResult.Key;
                 request.HeadlerCollection = theaderResult.Value;
@@ -158,23 +160,23 @@ namespace MiniMvc.Core.HttpStandard
         public static async Task<HttpResponse> BuildHttpResponse(IResponse response, HttpRequest request)
         {
             var tBody = Task.Run<KeyValuePair<string, byte[]>>(() =>
-             {
-                 string body;
-                 byte[] bodyInByte;
+            {
+                string body;
+                byte[] bodyInByte;
 
-                 if (request.Error == null && response != null)
-                 {
-                     body = JsonConvert.SerializeObject(response);
-                 }
-                 else
-                 {
-                     body = JsonConvert.SerializeObject(request);
-                 }
+                if (request.Error == null && response != null)
+                {
+                    body = JsonConvert.SerializeObject(response);
+                }
+                else
+                {
+                    body = JsonConvert.SerializeObject(request);
+                }
 
-                 bodyInByte = Encoding.UTF8.GetBytes(body);
+                bodyInByte = Encoding.UTF8.GetBytes(body);
 
-                 return new KeyValuePair<string, byte[]>(body, bodyInByte);
-             });
+                return new KeyValuePair<string, byte[]>(body, bodyInByte);
+            });
 
             HttpResponse httpResponse = new HttpResponse();
             if (request.Error == null && response != null)

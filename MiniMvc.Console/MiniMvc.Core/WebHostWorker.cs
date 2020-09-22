@@ -8,7 +8,7 @@ namespace MiniMvc.Core
 {
     internal class WebHostWorker : IDisposable
     {
-        Thread _thread;
+        Task _thread;
         bool _isStop;
         string _domainOrIp;
         int _port;
@@ -22,7 +22,7 @@ namespace MiniMvc.Core
         public bool IsWebSocketServer { get { return _isWss; } }
 
         public WebHostWorker(string domainOrIp, int port, int socketPoolSize = 0, int bufferLength = 2048
-            , Action onSocketReady = null, bool isWss=false)
+            , Action onSocketReady = null, bool isWss = false)
         {
             _bufferLength = bufferLength;
             _socketPoolSize = socketPoolSize;
@@ -33,8 +33,6 @@ namespace MiniMvc.Core
             _onSocketReady = onSocketReady;
 
             _socket = new HttpSocketAsyncHandleDispatched(_domainOrIp, _port, _socketPoolSize, _bufferLength, onSocketReady, isWss);
-
-            _thread = new Thread(async () => await Loop());
         }
 
         private async Task Loop()
@@ -58,12 +56,17 @@ namespace MiniMvc.Core
 
         public void Start()
         {
-            _thread.Start();
+            if (_thread == null || _thread.IsCompleted)
+            {
+                _thread = Task.Factory.StartNew(async () => await Loop());
+            }
         }
 
         public void Dispose()
         {
             _isStop = true;
+
+            _thread.GetAwaiter().GetResult();
         }
     }
 }

@@ -51,7 +51,7 @@ namespace MiniMvc.Core
   "Upgrade: websocket\r\n" +
   "Sec-WebSocket-Accept: " + swkaSha1Base64 + "\r\n\r\n");
 
-                clientStream.Write(response, 0, response.Length);
+                await clientStream.WriteAsync(response, 0, response.Length);
 
                 return firstRequest;
             }
