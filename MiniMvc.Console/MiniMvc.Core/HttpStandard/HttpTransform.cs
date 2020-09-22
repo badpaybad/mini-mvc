@@ -138,7 +138,7 @@ namespace MiniMvc.Core.HttpStandard
                 request.HttpVersion = firstLineRequest[2].Trim(new char[] { _splitCr, _splitNewLine, _splitSpeace });
 
                 request.Error = null;
-
+                
                 var theaderResult = await theader;
                 request.Header = theaderResult.Key;
                 request.HeadlerCollection = theaderResult.Value;
