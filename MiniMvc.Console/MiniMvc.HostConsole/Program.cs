@@ -17,11 +17,11 @@ namespace MiniMvc.HostConsole
 
             new WebHostBuilder()
                 .WithDomainOrIp("127.0.0.1")
-                .WithPort(8888)
-                .WithWssPort(9999)
+                .WithPort(8777)
+                //.WithWssPort(8776)
                 .WithWebSocketHandle("/channel1", async (request) =>
                 {
-                    await Task.Delay(0);
+                    await Task.Delay(1);
                     return new IndexResponse()
                     {
                         Title = "OnServerReceived: " + request.Body,
@@ -37,7 +37,7 @@ namespace MiniMvc.HostConsole
                 .WithRoutingHandle(HttpMethod.Get, "/index", Index)
                 .WithRoutingHandle(HttpMethod.Get, "/about", async (request) =>
                  {
-                     await Task.Delay(0);
+                     await Task.Delay(1);
                      return new IndexResponse()
                      {
                          Title = "badpaybad@gmail.com",

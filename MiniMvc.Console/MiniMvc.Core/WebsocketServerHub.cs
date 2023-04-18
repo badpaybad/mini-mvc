@@ -111,7 +111,7 @@ namespace MiniMvc.Core
             }
             else
             {
-                Console.WriteLine("mask bit not set");
+                Console.WriteLine("ReceiveAndReplyClientMessage mask bit not set");
             }
 
         }

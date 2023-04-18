@@ -124,31 +124,42 @@ namespace MiniMvc.Core
                         {
                             while (!_isStop)
                             {
-                                if (!clientWssAccepted.Client.Connected)
+                                try
                                 {
-                                    if (wss1stRequestOfHandShake != null)
+                                    if (!clientWssAccepted.Client.Connected)
                                     {
-                                        WebsocketServerHub.Remove(wss1stRequestOfHandShake.UrlRelative);
+                                        if (wss1stRequestOfHandShake != null)
+                                        {
+                                            WebsocketServerHub.Remove(wss1stRequestOfHandShake.UrlRelative);
+                                        }
+                                        await Shutdown(clientWssAccepted.Client, wss1stRequestOfHandShake);
+                                        break;
                                     }
-                                    await Shutdown(clientWssAccepted.Client, wss1stRequestOfHandShake);
-                                    break;
+
+                                    while (!clientStream.DataAvailable) ;
+                                    while (clientWssAccepted.Available < 3) ; // match against "get"
+
+                                    byte[] wssReceivedBytes = new byte[clientWssAccepted.Available];
+                                    await clientStream.ReadAsync(wssReceivedBytes, 0, clientWssAccepted.Available);
+
+                                    var handShakeRequest = await WebsocketServerHub.DoHandShaking(clientWssAccepted, clientStream, wssReceivedBytes);
+
+                                    if (handShakeRequest != null)
+                                    {
+                                        wss1stRequestOfHandShake = handShakeRequest;
+                                    }
+
+                                    await WebsocketServerHub.ReceiveAndReplyClientMessage(clientWssAccepted, clientStream, wssReceivedBytes, wss1stRequestOfHandShake);
                                 }
-
-                                while (!clientStream.DataAvailable) ;
-                                while (clientWssAccepted.Available < 3) ; // match against "get"
-
-                                byte[] wssReceivedBytes = new byte[clientWssAccepted.Available];
-                                await clientStream.ReadAsync(wssReceivedBytes, 0, clientWssAccepted.Available);
-
-                                var handShakeRequest = await WebsocketServerHub.DoHandShaking(clientWssAccepted, clientStream, wssReceivedBytes);
-
-                                if (handShakeRequest != null)
+                                catch (Exception exws)
                                 {
-                                    wss1stRequestOfHandShake = handShakeRequest;
+                                    Console.WriteLine(exws.Message);
+                                    Console.WriteLine(JsonConvert.SerializeObject(exws));
                                 }
-
-                                await WebsocketServerHub.ReceiveAndReplyClientMessage(clientWssAccepted, clientStream, wssReceivedBytes, wss1stRequestOfHandShake);
-
+                                finally
+                                {
+                                    await Task.Delay(1);
+                                }
                             }
 
                         });
@@ -202,7 +213,7 @@ namespace MiniMvc.Core
                 }
                 finally
                 {
-                    await Task.Delay(0);
+                    await Task.Delay(1);
                 }
             }
         }
@@ -244,10 +255,9 @@ namespace MiniMvc.Core
         {
             try
             {
-                await Task.Delay(0);
-
                 socketAccepted.Shutdown(SocketShutdown.Both);
                 socketAccepted.Close();
+                await Task.Delay(1);
             }
             catch (Exception ex)
             {
