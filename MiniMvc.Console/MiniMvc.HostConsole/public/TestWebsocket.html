@@ -40,24 +40,25 @@
 
       button.addEventListener("click", onClickButton);
 
-      var websocket = initWebSocket();
-
       var isNeedReconnect = 0;
 
       function loopCheckToReconnect() {
         setTimeout(function () {
           if (isNeedReconnect == 1) {
-            console.log("Reconnect " + isNeedReconnect);
+            writeToScreen("Reconnecting ... ");
             websocket = initWebSocket();
           }
           loopCheckToReconnect();
-        }, 1000);
+        }, 5000);
       }
 
-      function initWebSocket() {
-        var wsUri = "ws://127.0.0.1:8776/channel1";
+      var websocket = initWebSocket();
+      loopCheckToReconnect();
 
+      function initWebSocket() {
         var $self = this;
+
+        $self.wsUri = "ws://127.0.0.1:8776/channel1";
         $self._websocket = null;
 
         try {
