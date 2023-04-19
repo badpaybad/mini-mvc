@@ -1,5 +1,6 @@
 ﻿using MiniMvc.Core;
 using MiniMvc.Core.HttpStandard;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -16,17 +17,23 @@ namespace MiniMvc.HostConsole
             //TestAsync();
 
             new WebHostBuilder()
-                .WithDomainOrIp("127.0.0.1")
+                .WithDomainOrIp("0.0.0.0")
                 .WithPort(8777)
-                //.WithWssPort(8776)
+                .WithWssPort(8776)
                 .WithWebSocketHandle("/channel1", async (request) =>
                 {
-                    await Task.Delay(1);
-                    return new IndexResponse()
-                    {
-                        Title = "OnServerReceived: " + request.Body,
 
-                    };
+                    Console.WriteLine($"received from web browser client: {JsonConvert.SerializeObject(request)}");
+
+                    await Task.Delay(1);
+
+                    return null;// Return null if dont want send back to client, in clien :  websocket.onmessage = function (e) {}
+
+                    // return new WebSocketSampleResponse()
+                    // {
+                    //     Message = "If want send back to client , shold come with request.Id: " + request.Body,
+                    //     RequestContext = request
+                    // };
                 })
                 .WithNumberOfWorker(3)
                 .WithSocketPoolSize(int.MaxValue)
@@ -38,30 +45,40 @@ namespace MiniMvc.HostConsole
                 .WithRoutingHandle(HttpMethod.Get, "/about", async (request) =>
                  {
                      await Task.Delay(1);
-                     return new IndexResponse()
+                     return new AboutResponse()
                      {
-                         Title = "badpaybad@gmail.com",
-                         RequestContext = request
-
+                         Copyright = "badpaybad@gmail.com",
+                         Title = "Hello, you can add request context to response by define class inherit IResponse"
                      };
                  })
+               .WithRoutingHandle(HttpMethod.Get, "/sendtosocket", async (r) =>
+               {
+                   var msg = new WebSocketSampleResponse
+                   {
+                       Message = "sendtosocket " + DateTime.Now + $" {r.UrlQueryString}"
+                   };
+
+                   WebsocketServerHub.Publish("/channel1", msg);
+                   return msg;
+               })
+
                 .Start();
 
-            new Thread(() =>
-            {
-                while (true)
-                {
-                    // .WithWebSocketHandle("/channel1", async (request) // to create server channel
-                    // client usage /public/TestWebsocket.html
+            _ = Task.Run(async () =>
+              {
+                  while (true)
+                  {
+                      // .WithWebSocketHandle("/channel1", async (request) // to create server channel
+                      // client usage /public/TestWebsocket.html
 
-                    //server push to client usage, you can use this everywhere in your prj
-                    WebsocketServerHub.Publish("/channel1", new IndexResponse
-                    {
-                        Title = "Push from server at " + DateTime.Now
-                    });
-                    Thread.Sleep(5000);
-                }
-            }).Start();
+                      //server push to client usage, you can use this everywhere in your prj
+                      WebsocketServerHub.Publish("/channel1", new WebSocketSampleResponse
+                      {
+                          Message = "Sent to web brower from backend " + DateTime.Now
+                      });
+                      await Task.Delay(5000);
+                  }
+              });
 
             while (true)
             {
@@ -134,6 +151,19 @@ namespace MiniMvc.HostConsole
     public class IndexResponse : IResponse
     {
         public string Title { get; set; }
+        public HttpRequest RequestContext { get; set; }
+    }
+
+    public class AboutResponse : IResponse
+    {
+        public string Title { get; set; }
+        public string Copyright { get; set; }
+    }
+
+
+    public class WebSocketSampleResponse : IResponse
+    {
+        public string Message { get; set; }
         public HttpRequest RequestContext { get; set; }
     }
 }

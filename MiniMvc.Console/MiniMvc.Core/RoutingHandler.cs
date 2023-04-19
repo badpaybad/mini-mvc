@@ -49,6 +49,9 @@ namespace MiniMvc.Core
             return null;
         }
 
+        ///
+        ///Return null if dont want send back to client, in clien :  websocket.onmessage = function (e) {}
+        ///
         internal static async Task<IResponse> HandleWss(HttpRequest request)
         {
             string key = string.Empty;
@@ -61,6 +64,7 @@ namespace MiniMvc.Core
             {
                 //may be you want do chain responsibility here, middleware here
                 var response = await action(request);
+                
                 return response;
             }
 

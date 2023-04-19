@@ -17,7 +17,7 @@ namespace MiniMvc.Core
 {
     internal class HttpSocketAsyncHandleDispatched : IDisposable
     {
-        static ConcurrentDictionary<string, TcpListener> _listTcpListener = new ConcurrentDictionary<string, TcpListener>();
+        ConcurrentDictionary<string, TcpListener> _listTcpListener = new ConcurrentDictionary<string, TcpListener>();
 
         bool _isStop = false;
         int _bufferLength = 2048;
@@ -59,7 +59,7 @@ namespace MiniMvc.Core
                         listener.Start(_poolSize);
 
                         _listTcpListener.TryAdd(key, listener);
-                        Console.WriteLine($"{ip}:{port} Listening ...");
+                        Console.WriteLine($"TcpListener {ip}:{port} wss: {_isWss} Listening ...");
 
                     }
                 }
@@ -72,6 +72,10 @@ namespace MiniMvc.Core
 
         private static List<IPAddress> FindIpAddressByDomain(string ipOrDomain)
         {
+
+            if (ipOrDomain.Equals("0.0.0.0")) { return new List<IPAddress> { IPAddress.Any }; };
+            if (ipOrDomain.Equals("::0")) { return new List<IPAddress> { IPAddress.IPv6Any }; };
+
             if (ipOrDomain.Equals("localhost")) { ipOrDomain = "127.0.0.1"; }
 
             IPHostEntry ipHostInfo = Dns.GetHostEntry(ipOrDomain);
@@ -88,23 +92,26 @@ namespace MiniMvc.Core
             return listIp;
         }
 
+        List<Task> _listTaskNetworkAcceptIncomming = new List<Task>();
         public async Task StartAcceptIncommingAsync()
         {
             _onStart?.Invoke();
 
-            List<Task> listTask = new List<Task>();
 
             foreach (var tcp in _listTcpListener)
             {
-                listTask.Add(Task.Run(async () => await InternalStartAcceptIncommingAsync(tcp.Value)));
+                _listTaskNetworkAcceptIncomming.Add(Task.Run(async () =>
+                {
+                    await LoopInternalStartAcceptIncommingAsync(tcp.Value);
+                }));
                 //await InternalStartAcceptIncommingAsync(tcp.Value);
                 //listTask.Add(InternalStartAcceptIncommingAsync(tcp.Value));
             }
 
-            await Task.WhenAll(listTask);
+            await Task.WhenAll(_listTaskNetworkAcceptIncomming);
         }
 
-        async Task InternalStartAcceptIncommingAsync(TcpListener tcpListener)
+        async Task LoopInternalStartAcceptIncommingAsync(TcpListener tcpListener)
         {
             //you may want to do with ssl
             //https://docs.microsoft.com/en-us/dotnet/api/system.net.security.sslstream?redirectedfrom=MSDN&view=netcore-3.1
@@ -112,7 +119,6 @@ namespace MiniMvc.Core
             {
                 try
                 {
-
                     if (_isWss)
                     {
                         //https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_server
@@ -146,10 +152,11 @@ namespace MiniMvc.Core
 
                                     if (handShakeRequest != null)
                                     {
-                                        wss1stRequestOfHandShake = handShakeRequest;
+                                        wss1stRequestOfHandShake = handShakeRequest.Copy();
+                                        wss1stRequestOfHandShake.RemoteEndPoint = clientWssAccepted.Client.RemoteEndPoint.ToString();
                                     }
 
-                                    await WebsocketServerHub.ReceiveAndReplyClientMessage(clientWssAccepted, clientStream, wssReceivedBytes, wss1stRequestOfHandShake);
+                                    await WebsocketServerHub.ReceiveAndReplyClientMessage(clientWssAccepted, clientStream, wssReceivedBytes, wss1stRequestOfHandShake.Copy());
                                 }
                                 catch (Exception exws)
                                 {
@@ -164,47 +171,51 @@ namespace MiniMvc.Core
 
                         });
 
-                        continue;
+                    }
+                    else
+                    {
+                        //WebHostWorker will try accept its job
+                        Socket clientSocket = await tcpListener.AcceptSocketAsync();
+                        //parse request then dispatched by RoutingHandler
+                        var t = Task.Run(async () =>
+                        {
+                            Task<HttpRequest> tRequest = ReadByteFromClientSocketAndBuildRequest(clientSocket);
+
+                            HttpRequest request = new HttpRequest
+                            {
+                                CreatedAt = DateTime.Now,
+                                RemoteEndPoint = clientSocket.RemoteEndPoint.ToString()
+                            };
+
+                            var tempRequest = await tRequest;
+
+                            request.Body = tempRequest.Body;
+                            request.Error = tempRequest.Error;
+                            request.Header = tempRequest.Header;
+                            request.HeadlerCollection = tempRequest.HeadlerCollection;
+                            request.HttpVersion = tempRequest.HttpVersion;
+                            request.Method = tempRequest.Method;
+                            request.QueryParamCollection = tempRequest.QueryParamCollection;
+                            request.Url = tempRequest.Url;
+                            request.UrlRelative = tempRequest.UrlRelative;
+                            request.UrlQueryString = tempRequest.UrlQueryString;
+
+                            //dispatched routing here
+                            var processedResult = await RoutingHandler.Handle(request);
+
+                            HttpResponse response = await HttpTransform.BuildHttpResponse(processedResult, request);
+
+                            await SendResponseToClientSocket(clientSocket, request, response);
+
+                            await Shutdown(clientSocket, request);
+
+                            HttpLogger.Log(request);
+
+                            Console.WriteLine($"{request.RemoteEndPoint}@{request.CreatedAt}=>{request.Method}:{request.Url}");
+                        });
+
                     }
 
-                    //WebHostWorker will try accept its job
-                    Socket clientSocket = await tcpListener.AcceptSocketAsync();
-                    //parse request then dispatched by RoutingHandler
-                    var t = Task.Run(async () =>
-                    {
-                        Task<HttpRequest> tRequest = ReadByteFromClientSocketAndBuildRequest(clientSocket);
-
-                        HttpRequest request = new HttpRequest();
-
-                        request.CreatedAt = DateTime.Now;
-                        request.RemoteEndPoint = clientSocket.RemoteEndPoint.ToString();
-
-                        var tempRequest = await tRequest;
-
-                        request.Body = tempRequest.Body;
-                        request.Error = tempRequest.Error;
-                        request.Header = tempRequest.Header;
-                        request.HeadlerCollection = tempRequest.HeadlerCollection;
-                        request.HttpVersion = tempRequest.HttpVersion;
-                        request.Method = tempRequest.Method;
-                        request.QueryParamCollection = tempRequest.QueryParamCollection;
-                        request.Url = tempRequest.Url;
-                        request.UrlRelative = tempRequest.UrlRelative;
-                        request.UrlQueryString = tempRequest.UrlQueryString;
-
-                        //dispatched routing here
-                        var processedResult = await RoutingHandler.Handle(request);
-
-                        HttpResponse response = await HttpTransform.BuildHttpResponse(processedResult, request);
-
-                        await SendResponseToClientSocket(clientSocket, request, response);
-
-                        await Shutdown(clientSocket, request);
-
-                        HttpLogger.Log(request);
-
-                        Console.WriteLine($"{request.RemoteEndPoint}@{request.CreatedAt}=>{request.Method}:{request.Url}");
-                    });
                 }
                 catch (Exception ex)
                 {

@@ -1,82 +1,114 @@
 ﻿<!DOCTYPE html>
 
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
-<head>
+  <head>
     <meta charset="utf-8" />
     <title>web soket test</title>
     <style>
-        textarea {
-            vertical-align: bottom;
-        }
+      textarea {
+        vertical-align: bottom;
+      }
 
-        #output {
-            overflow: auto;
-        }
+      #output {
+        overflow: auto;
+      }
 
-            #output > p {
-                overflow-wrap: break-word;
-            }
+      #output > p {
+        overflow-wrap: break-word;
+      }
 
-            #output span {
-                color: blue;
-            }
+      #output span {
+        color: blue;
+      }
 
-                #output span.error {
-                    color: red;
-                }
+      #output span.error {
+        color: red;
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <h2>WebSocket Test</h2>
-<textarea cols=60 rows=6></textarea>
+    <textarea cols="60" rows="6"></textarea>
     <button>send</button>
-    <div id=output></div>
+    <div id="output"></div>
     <script>
-    // http://www.websocket.org/echo.html
+      // http://www.websocket.org/echo.html
 
-    var button = document.querySelector("button"),
+      var button = document.querySelector("button"),
         output = document.querySelector("#output"),
-        textarea = document.querySelector("textarea"),
+        textarea = document.querySelector("textarea");
+
+      button.addEventListener("click", onClickButton);
+
+      var websocket = initWebSocket();
+
+      var isNeedReconnect = 0;
+
+      function loopCheckToReconnect() {
+        setTimeout(function () {
+          if (isNeedReconnect == 1) {
+            console.log("Reconnect " + isNeedReconnect);
+            websocket = initWebSocket();
+          }
+          loopCheckToReconnect();
+        }, 1000);
+      }
+
+      function initWebSocket() {
+        var wsUri = "ws://127.0.0.1:8776/channel1";
+
+        var $self = this;
+        $self._websocket = null;
+
+        try {
+          $self._websocket = new WebSocket(wsUri);
+        } catch (err) {}
         // wsUri = "ws://echo.websocket.org/",
-        wsUri = "ws://127.0.0.1:8776/channel1",
-        websocket = new WebSocket(wsUri);
 
-    button.addEventListener("click", onClickButton);
+        if ($self._websocket == null) {
+          isNeedReconnect = 1;
+          return null;
+        }
 
-    websocket.onopen = function (e) {
-        writeToScreen("CONNECTED");
-        doSend("WebSocket ping");
-    };
+        $self._websocket.onopen = function (e) {
+          isNeedReconnect = 0;
+          writeToScreen("CONNECTED");
+          doSend("WebSocket ping");
+        };
 
-    websocket.onclose = function (e) {
-        writeToScreen("DISCONNECTED");
-    };
+        $self._websocket.onclose = function (e) {
+          isNeedReconnect = 1;
+          writeToScreen("DISCONNECTED");
+        };
 
-    websocket.onmessage = function (e) {
-        writeToScreen("<span>RESPONSE: " + e.data + "</span>");
-    };
+        $self._websocket.onmessage = function (e) {
+          writeToScreen("<span> received : " + e.data + "</span>");
+        };
 
-    websocket.onerror = function (e) {
-        writeToScreen("<span class=error>ERROR:</span> " + e.data);
-    };
+        $self._websocket.onerror = function (e) {
+          isNeedReconnect = 1;
+          writeToScreen("<span class=error>ERROR:</span> " + e.data);
+        };
 
-    function doSend(message) {
-        writeToScreen("SENT: " + message);
+        return $self._websocket;
+      }
+
+      function doSend(message) {
+        writeToScreen("web browser client sent: " + message);
         websocket.send(message);
-    }
+      }
 
-    function writeToScreen(message) {
+      function writeToScreen(message) {
         output.insertAdjacentHTML("afterbegin", "<p>" + message + "</p>");
-    }
+      }
 
-    function onClickButton() {
+      function onClickButton() {
         var text = textarea.value;
 
         text && doSend(text);
         textarea.value = "";
         textarea.focus();
-    }
+      }
     </script>
-</body>
+  </body>
 </html>

@@ -14,8 +14,8 @@ namespace MiniMvc.Core
 
         int _numberOfWorker = 3;
         string _domainOrId;
-        int _port;
-        int? _wssPort;
+        int _port = 80;
+        int _wssPort = 0;
         int _socketPoolSize = 0;
         int _socketBufferLength = 2048;
 
@@ -30,7 +30,7 @@ namespace MiniMvc.Core
             _port = port;
             return this;
         }
-        public WebHostBuilder WithWssPort(int? port)
+        public WebHostBuilder WithWssPort(int port)
         {
             _wssPort = port;
             return this;
@@ -71,6 +71,14 @@ namespace MiniMvc.Core
 
             return this;
         }
+
+
+        /// <summary>
+        /// Return null if dont want send back to client, in clien :  websocket.onmessage = function (e) {}
+        /// </summary>
+        /// <param name="urlRelative"></param>
+        /// <param name="action"></param>
+        /// <returns></returns>
         public WebHostBuilder WithWebSocketHandle(string urlRelative, Func<HttpRequest, Task<IResponse>> action)
         {
             RoutingHandler.RegisterWss(urlRelative, action);
@@ -80,36 +88,40 @@ namespace MiniMvc.Core
         public void Start()
         {
             Console.WriteLine($"BaseDirectory: {AppDomain.CurrentDomain.BaseDirectory}");
-            Console.WriteLine($"WebHostBuilder start at: {_domainOrId}:{_port}");
+            Console.WriteLine($"WebHostBuilder start HTTP at: {_domainOrId}:{_port}");
+
+            WebHostWorker httpWorker = new WebHostWorker(_domainOrId, _port, _socketPoolSize, _socketBufferLength, async () =>
+                   {
+                       //await RoutingHandler.Ping(_domainOrId, _port);  
+                       await Task.Delay(1);
+                   }, false);
+
+            _listWorker.Add(httpWorker);
+
+            if (_wssPort != 0)
+            {
+                Console.WriteLine($"WebHostBuilder start WSS  at: {_domainOrId}:{_wssPort}");
+
+                WebHostWorker wssWorker = new WebHostWorker(_domainOrId, _wssPort, _socketPoolSize, _socketBufferLength, async () =>
+                {
+                    await Task.Delay(1);
+                }, true);
+
+                _listWorker.Add(wssWorker);
+            }
 
             for (var i = 0; i < _numberOfWorker; i++)
             {
-                WebHostWorker httpWorker = new WebHostWorker(_domainOrId, _port, _socketPoolSize, _socketBufferLength, async () =>
-                {
-                    await RoutingHandler.Ping(_domainOrId, _port);
-                }, false);
-
-                _listWorker.Add(httpWorker);
-
-                if (_wssPort != null)
-                {
-                    WebHostWorker wssWorker = new WebHostWorker(_domainOrId, _wssPort.Value, _socketPoolSize, _socketBufferLength, async () =>
-                    {
-                        await Task.Delay(100);
-                    }, true);
-
-                    _listWorker.Add(wssWorker);
-                }
+                // todo: my code may be design wrong , cause 1 ip 1 port just one listener
             }
-            
+
             foreach (var w in _listWorker)
             {
                 w.Start();
             }
 
-
         }
-        
+
         public void Dispose()
         {
             foreach (var w in _listWorker)

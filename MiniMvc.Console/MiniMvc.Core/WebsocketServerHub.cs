@@ -59,27 +59,35 @@ namespace MiniMvc.Core
             return firstRequest;
         }
 
-        internal static async Task ReceiveAndReplyClientMessage(TcpClient clientWssAccepted, NetworkStream clientStream, byte[] wssReceivedBytes, HttpRequest firstRequestOfHandShake)
+        internal static async Task ReceiveAndReplyClientMessage(TcpClient clientWssAccepted, NetworkStream clientStream
+        , byte[] wssReceivedBytes
+        , HttpRequest firstRequestOfHandShake)
         {
-            bool fin = (wssReceivedBytes[0] & 0b10000000) != 0;
-            bool mask = (wssReceivedBytes[1] & 0b10000000) != 0; // must be true, "All messages from the client to the server have this bit set"
 
-            int opcode = wssReceivedBytes[0] & 0b00001111, // expecting 1 - text message
-                msglen = wssReceivedBytes[1] - 128, // & 0111 1111
-                offset = 2;
+            //https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_server
+
+            bool fin = (wssReceivedBytes[0] & 0b10000000) != 0,
+                     mask = (wssReceivedBytes[1] & 0b10000000) != 0; // must be true, "All messages from the client to the server have this bit set"
+            int opcode = wssReceivedBytes[0] & 0b00001111; // expecting 1 - text message
+            ulong offset = 2;
+            ulong msglen = 0;
+            int tempMsgLen = wssReceivedBytes[1] & 0b01111111;
+            msglen = (ulong)tempMsgLen;
 
             if (msglen == 126)
             {
-                // was ToUInt16(bytes, offset) but the result is incorrect
+                // bytes are reversed because websocket will print them in Big-Endian, whereas
+                // BitConverter will want them arranged in little-endian on windows
                 msglen = BitConverter.ToUInt16(new byte[] { wssReceivedBytes[3], wssReceivedBytes[2] }, 0);
                 offset = 4;
             }
             else if (msglen == 127)
             {
-                Console.WriteLine("TODO: msglen == 127, needs qword to store msglen");
-                // i don't really know the byte order, please edit this
-                // msglen = BitConverter.ToUInt64(new byte[] { bytes[5], bytes[4], bytes[3], bytes[2], bytes[9], bytes[8], bytes[7], bytes[6] }, 0);
-                // offset = 10;
+                // To test the below code, we need to manually buffer larger messages — since the NIC's autobuffering
+                // may be too latency-friendly for this code to run (that is, we may have only some of the bytes in this
+                // websocket frame available through client.Available).
+                msglen = BitConverter.ToUInt64(new byte[] { wssReceivedBytes[9], wssReceivedBytes[8], wssReceivedBytes[7], wssReceivedBytes[6], wssReceivedBytes[5], wssReceivedBytes[4], wssReceivedBytes[3], wssReceivedBytes[2] }, 0);
+                offset = 10;
             }
 
             if (msglen == 0)
@@ -92,21 +100,28 @@ namespace MiniMvc.Core
                 byte[] masks = new byte[4] { wssReceivedBytes[offset], wssReceivedBytes[offset + 1], wssReceivedBytes[offset + 2], wssReceivedBytes[offset + 3] };
                 offset += 4;
 
-                for (int i = 0; i < msglen; ++i)
+                for (ulong i = 0; i < msglen; ++i)
                     decoded[i] = (byte)(wssReceivedBytes[offset + i] ^ masks[i % 4]);
 
                 string receivedFromClient = Encoding.UTF8.GetString(decoded);
 
-                var wssResponse = await RoutingHandler.HandleWss(new HttpRequest()
-                {
-                    UrlRelative = firstRequestOfHandShake.UrlRelative,
-                    Method = "wss",
-                    CreatedAt = DateTime.Now,
-                    Body = receivedFromClient,
-                    RemoteEndPoint = clientWssAccepted.Client.RemoteEndPoint.ToString()
-                });
+                var requestWss = firstRequestOfHandShake.Copy();
+                requestWss.UrlRelative = firstRequestOfHandShake.UrlRelative;
+                requestWss.Method = "wss";
+                requestWss.CreatedAt = DateTime.Now;
+                requestWss.Body = receivedFromClient;
+                requestWss.RemoteEndPoint = clientWssAccepted.Client.RemoteEndPoint.ToString();
 
-                WebsocketServerHub.Send(clientWssAccepted, clientStream, wssResponse);
+                var wssResponse = await RoutingHandler.HandleWss(requestWss);
+
+                if (wssResponse != null)
+                {
+                    WebsocketServerHub.Send(clientWssAccepted, clientStream, wssResponse);
+                }
+                else
+                {
+                    clientStream.Flush();
+                }
 
             }
             else
