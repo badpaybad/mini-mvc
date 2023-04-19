@@ -56,7 +56,7 @@ namespace MiniMvc.Core.HttpStandard
                         if (kIndex > 0)
                         {
                             header += l + "\n";
-                            headerCollection[l.Substring(0, kIndex).ToLower()] = l.Substring(kIndex + 1);
+                            headerCollection[l.Substring(0, kIndex).ToLower().Trim(new char[] { _splitCr, _splitNewLine, _splitSpeace })] = l.Substring(kIndex + 1).Trim(new char[] { _splitCr, _splitNewLine, _splitSpeace });
                         }
                         if (string.IsNullOrEmpty(l))
                         {
@@ -82,11 +82,11 @@ namespace MiniMvc.Core.HttpStandard
                             var arrVal = p.Split(_splitEqual);
                             if (arrVal.Length > 1)
                             {
-                                prams.Add(new KeyValuePair<string, string>(arrVal[0].ToLower(), arrVal[1]));
+                                prams.Add(new KeyValuePair<string, string>(arrVal[0].ToLower().Trim(new char[] { _splitCr, _splitNewLine, _splitSpeace }), arrVal[1].Trim(new char[] { _splitCr, _splitNewLine, _splitSpeace })));
                             }
                             else
                             {
-                                prams.Add(new KeyValuePair<string, string>(arrVal[0].ToLower(), string.Empty));
+                                prams.Add(new KeyValuePair<string, string>(arrVal[0].ToLower().Trim(new char[] { _splitCr, _splitNewLine, _splitSpeace }), string.Empty));
                             }
                         }
                     }
