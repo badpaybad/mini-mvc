@@ -152,12 +152,18 @@ namespace MiniMvc.HostConsole
     {
         public string Title { get; set; }
         public HttpRequest RequestContext { get; set; }
+
+        public string ContentType { get; set; }
+        public byte[] RawBytes { get; set; }
     }
 
     public class AboutResponse : IResponse
     {
         public string Title { get; set; }
         public string Copyright { get; set; }
+
+        public string ContentType { get; set; }
+        public byte[] RawBytes { get; set; }
     }
 
 
@@ -165,5 +171,9 @@ namespace MiniMvc.HostConsole
     {
         public string Message { get; set; }
         public HttpRequest RequestContext { get; set; }
+
+
+        public string ContentType { get; set; }
+        public byte[] RawBytes { get; set; }
     }
 }

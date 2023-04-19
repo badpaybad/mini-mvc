@@ -150,13 +150,27 @@ namespace MiniMvc.Core
 
                                     var handShakeRequest = await WebsocketServerHub.DoHandShaking(clientWssAccepted, clientStream, wssReceivedBytes);
 
-                                    if (handShakeRequest != null)
+                                    if (handShakeRequest != null && wss1stRequestOfHandShake == null)
                                     {
                                         wss1stRequestOfHandShake = handShakeRequest.Copy();
                                         wss1stRequestOfHandShake.RemoteEndPoint = clientWssAccepted.Client.RemoteEndPoint.ToString();
                                     }
 
-                                    await WebsocketServerHub.ReceiveAndReplyClientMessage(clientWssAccepted, clientStream, wssReceivedBytes, wss1stRequestOfHandShake.Copy());
+                                    var requestWss = await WebsocketServerHub.BuildNextRequestToPublish(wssReceivedBytes, wss1stRequestOfHandShake.Copy());
+                                    if (requestWss != null)
+                                    {
+                                        var wssResponse = await RoutingHandler.HandleWss(requestWss);
+
+                                        if (wssResponse != null)
+                                        {
+                                            WebsocketServerHub.Send(clientWssAccepted, clientStream, wssResponse);
+                                        }
+                                        else
+                                        {
+                                            clientStream.Flush();
+                                        }
+                                    }
+
                                 }
                                 catch (Exception exws)
                                 {

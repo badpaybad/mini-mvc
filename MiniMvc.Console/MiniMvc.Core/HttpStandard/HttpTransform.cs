@@ -161,19 +161,22 @@ namespace MiniMvc.Core.HttpStandard
         {
             var tBody = Task.Run<KeyValuePair<string, byte[]>>(() =>
             {
-                string body;
-                byte[] bodyInByte;
+                string body = string.Empty;
+                byte[] bodyInByte = response.RawBytes;
 
-                if (request.Error == null && response != null)
+                if (string.IsNullOrEmpty(response.ContentType) || string.IsNullOrWhiteSpace(response.ContentType) || response.ContentType == "application/json")
                 {
-                    body = JsonConvert.SerializeObject(response);
-                }
-                else
-                {
-                    body = JsonConvert.SerializeObject(request);
-                }
 
-                bodyInByte = Encoding.UTF8.GetBytes(body);
+                    if (request.Error == null && response != null)
+                    {
+                        body = JsonConvert.SerializeObject(response);
+                    }
+                    else
+                    {
+                        body = JsonConvert.SerializeObject(request);
+                    }
+                    bodyInByte = Encoding.UTF8.GetBytes(body);
+                }
 
                 return new KeyValuePair<string, byte[]>(body, bodyInByte);
             });

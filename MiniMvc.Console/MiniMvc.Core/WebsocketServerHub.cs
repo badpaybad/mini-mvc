@@ -46,10 +46,10 @@ namespace MiniMvc.Core
                 byte[] swkaSha1 = System.Security.Cryptography.SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(swka));
                 string swkaSha1Base64 = Convert.ToBase64String(swkaSha1);
                 byte[] response = Encoding.UTF8.GetBytes(
-  "HTTP/1.1 101 Switching Protocols\r\n" +
-  "Connection: Upgrade\r\n" +
-  "Upgrade: websocket\r\n" +
-  "Sec-WebSocket-Accept: " + swkaSha1Base64 + "\r\n\r\n");
+                                        "HTTP/1.1 101 Switching Protocols\r\n" +
+                                        "Connection: Upgrade\r\n" +
+                                        "Upgrade: websocket\r\n" +
+                                        "Sec-WebSocket-Accept: " + swkaSha1Base64 + "\r\n\r\n");
 
                 await clientStream.WriteAsync(response, 0, response.Length);
 
@@ -59,13 +59,10 @@ namespace MiniMvc.Core
             return firstRequest;
         }
 
-        internal static async Task ReceiveAndReplyClientMessage(TcpClient clientWssAccepted, NetworkStream clientStream
-        , byte[] wssReceivedBytes
+        internal static async Task<HttpRequest> BuildNextRequestToPublish(byte[] wssReceivedBytes
         , HttpRequest firstRequestOfHandShake)
         {
-
             //https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_server
-
             bool fin = (wssReceivedBytes[0] & 0b10000000) != 0,
                      mask = (wssReceivedBytes[1] & 0b10000000) != 0; // must be true, "All messages from the client to the server have this bit set"
             int opcode = wssReceivedBytes[0] & 0b00001111; // expecting 1 - text message
@@ -73,7 +70,6 @@ namespace MiniMvc.Core
             ulong msglen = 0;
             int tempMsgLen = wssReceivedBytes[1] & 0b01111111;
             msglen = (ulong)tempMsgLen;
-
             if (msglen == 126)
             {
                 // bytes are reversed because websocket will print them in Big-Endian, whereas
@@ -93,6 +89,7 @@ namespace MiniMvc.Core
             if (msglen == 0)
             {
                 Console.WriteLine("msglen == 0");
+                return null;
             }
             else if (mask)
             {
@@ -110,23 +107,14 @@ namespace MiniMvc.Core
                 requestWss.Method = "wss";
                 requestWss.CreatedAt = DateTime.Now;
                 requestWss.Body = receivedFromClient;
-                requestWss.RemoteEndPoint = clientWssAccepted.Client.RemoteEndPoint.ToString();
 
-                var wssResponse = await RoutingHandler.HandleWss(requestWss);
-
-                if (wssResponse != null)
-                {
-                    WebsocketServerHub.Send(clientWssAccepted, clientStream, wssResponse);
-                }
-                else
-                {
-                    clientStream.Flush();
-                }
+                return requestWss;
 
             }
             else
             {
                 Console.WriteLine("ReceiveAndReplyClientMessage mask bit not set");
+                return null;
             }
 
         }

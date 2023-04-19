@@ -24,6 +24,11 @@ namespace MiniMvc.Core
 
         static object _locker = new object();
 
+        /// <summary>
+        /// Can do midle ware 
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
         internal static async Task<IResponse> Handle(HttpRequest request)
         {
             string key = string.Empty;
@@ -49,9 +54,11 @@ namespace MiniMvc.Core
             return null;
         }
 
-        ///
-        ///Return null if dont want send back to client, in clien :  websocket.onmessage = function (e) {}
-        ///
+        /// <summary>
+        /// Return null if dont want send back to client, in clien :  websocket.onmessage = function (e) {}, can do middle ware
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
         internal static async Task<IResponse> HandleWss(HttpRequest request)
         {
             string key = string.Empty;
@@ -64,7 +71,7 @@ namespace MiniMvc.Core
             {
                 //may be you want do chain responsibility here, middleware here
                 var response = await action(request);
-                
+
                 return response;
             }
 
