@@ -193,7 +193,14 @@ namespace MiniMvc.Core.HttpStandard
                 httpResponse.Status = System.Net.HttpStatusCode.NotFound;
             }
             httpResponse.Header += "Server: MiniMvc-v1\r\n";
-            httpResponse.Header += "Content-Type: application/json\r\n";
+            if (string.IsNullOrEmpty(response.ContentType) || string.IsNullOrWhiteSpace(response.ContentType) || response.ContentType == "application/json")
+            {
+                httpResponse.Header += "Content-Type: application/json\r\n";
+            }
+            else
+            {
+                httpResponse.Header += $"Content-Type: {response.ContentType}\r\n";
+            }
             httpResponse.Header += "Connection: close\r\n";
             //other header will here
 

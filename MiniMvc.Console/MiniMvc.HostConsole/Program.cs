@@ -19,7 +19,7 @@ namespace MiniMvc.HostConsole
             new WebHostBuilder()
                 .WithDomainOrIp("0.0.0.0")
                 .WithPort(8777)
-                .WithWssPort(8776)
+                //.WithWssPort(8776)
                 .WithWebSocketHandle("/channel1", async (request) =>
                 {
 
@@ -58,7 +58,7 @@ namespace MiniMvc.HostConsole
                        Message = "sendtosocket " + DateTime.Now + $" {r.UrlQueryString}"
                    };
 
-                   WebsocketServerHub.Publish("/channel1", msg);
+                   await WebsocketServerHub.Publish("/channel1", msg);
                    return msg;
                })
 
@@ -72,7 +72,7 @@ namespace MiniMvc.HostConsole
                       // client usage /public/TestWebsocket.html
 
                       //server push to client usage, you can use this everywhere in your prj
-                      WebsocketServerHub.Publish("/channel1", new WebSocketSampleResponse
+                      await WebsocketServerHub.Publish("/channel1", new WebSocketSampleResponse
                       {
                           Message = "Sent to web brower from backend " + DateTime.Now
                       });

@@ -17,19 +17,6 @@ namespace MiniMvc.Core
         static ConcurrentDictionary<string, BlockingCollection<KeyValuePair<TcpClient, NetworkStream>>> _channel =
           new ConcurrentDictionary<string, BlockingCollection<KeyValuePair<TcpClient, NetworkStream>>>();
 
-        internal static void Register(string urlRelative, TcpClient tcpClient, NetworkStream clientStream)
-        {
-
-            if (!_channel.TryGetValue(urlRelative, out BlockingCollection<KeyValuePair<TcpClient, NetworkStream>> clients)
-                || clients == null)
-            {
-                clients = new BlockingCollection<KeyValuePair<TcpClient, NetworkStream>>();
-                _channel.TryAdd(urlRelative, clients);
-            }
-
-            clients.Add(new KeyValuePair<TcpClient, NetworkStream>(tcpClient, clientStream));
-        }
-
         internal static async Task<HttpRequest> DoHandShaking(TcpClient clientWssAccepted, NetworkStream clientStream, byte[] wssReceivedBytes)
         {
             string wss1stData = Encoding.UTF8.GetString(wssReceivedBytes);
@@ -59,9 +46,10 @@ namespace MiniMvc.Core
             return firstRequest;
         }
 
-        internal static async Task<HttpRequest> BuildNextRequestToPublish(byte[] wssReceivedBytes
+        internal static async Task<HttpRequest> BuildNextRequestWss(byte[] wssReceivedBytes
         , HttpRequest firstRequestOfHandShake)
         {
+            await Task.Yield();
             //https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_server
             bool fin = (wssReceivedBytes[0] & 0b10000000) != 0,
                      mask = (wssReceivedBytes[1] & 0b10000000) != 0; // must be true, "All messages from the client to the server have this bit set"
@@ -119,22 +107,42 @@ namespace MiniMvc.Core
 
         }
 
-        public static void Publish(string urlRelative, IResponse response)
+        static void Register(string urlRelative, TcpClient tcpClient, NetworkStream clientStream)
         {
+
+            if (!_channel.TryGetValue(urlRelative, out BlockingCollection<KeyValuePair<TcpClient, NetworkStream>> clients)
+                || clients == null)
+            {
+                clients = new BlockingCollection<KeyValuePair<TcpClient, NetworkStream>>();
+                _channel.TryAdd(urlRelative, clients);
+            }
+
+            clients.Add(new KeyValuePair<TcpClient, NetworkStream>(tcpClient, clientStream));
+        }
+
+        public static async Task RegisterHandle(string urlRelative, Func<HttpRequest, Task<IResponse>> action)
+        {
+            await Task.Yield();
+            RoutingHandler.RegisterWss(urlRelative, action);
+        }
+
+        public static async Task Publish(string urlRelative, IResponse response)
+        {
+            await Task.Yield();
             if (_channel.TryGetValue(urlRelative, out BlockingCollection<KeyValuePair<TcpClient, NetworkStream>> clients)
                 && clients != null)
             {
                 List<Task> tasks = new List<Task>();
                 foreach (var client in clients)
                 {
-                    tasks.Add(Task.Run(() =>
+                    tasks.Add(Task.Run(async () =>
                    {
                        if (!client.Key.Client.Connected)
                        {
                            WebsocketServerHub.Remove(urlRelative);
                            return;
                        }
-                       WebsocketServerHub.Send(client.Key, client.Value, response);
+                      await  WebsocketServerHub.Send(client.Key, client.Value, response);
                    }));
                 }
 
@@ -143,7 +151,7 @@ namespace MiniMvc.Core
             }
         }
 
-        internal static void Remove(string urlRelative)
+        public static void Remove(string urlRelative)
         {
             _channel.TryRemove(urlRelative, out BlockingCollection<KeyValuePair<TcpClient, NetworkStream>> olds);
             if (olds == null) return;
@@ -169,15 +177,21 @@ namespace MiniMvc.Core
 
         }
 
-        internal static void Send(TcpClient tcpClient, NetworkStream clientStream, IResponse response)
+        internal static async Task Send(TcpClient tcpClient, NetworkStream clientStream, IResponse response)
         {
+            await Task.Yield();
             try
             {
                 if (!tcpClient.Client.Connected)
                 {
                     return;
                 }
-                var buf = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response));
+                var buf = response.RawBytes;
+                if (string.IsNullOrEmpty(response.ContentType) || string.IsNullOrWhiteSpace(response.ContentType) || response.ContentType == "application/json")
+                {
+                    buf = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response));
+                }
+
                 int frameSize = 64;
 
                 var parts = buf.Select((b, i) => new { b, i })

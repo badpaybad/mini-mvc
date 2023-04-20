@@ -17,7 +17,10 @@ namespace MiniMvc.Core
 {
     internal class HttpSocketAsyncHandleDispatched : IDisposable
     {
-        ConcurrentDictionary<string, TcpListener> _listTcpListener = new ConcurrentDictionary<string, TcpListener>();
+        /// <summary>
+        /// keep TcpListener listent only one time for each port
+        /// </summary>
+        static ConcurrentDictionary<string, TcpListener> _listTcpListener = new ConcurrentDictionary<string, TcpListener>();
 
         bool _isStop = false;
         int _bufferLength = 2048;
@@ -121,112 +124,12 @@ namespace MiniMvc.Core
                 {
                     if (_isWss)
                     {
-                        //https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_server
-                        TcpClient clientWssAccepted = await tcpListener.AcceptTcpClientAsync();
-                        NetworkStream clientStream = clientWssAccepted.GetStream();
-                        HttpRequest wss1stRequestOfHandShake = null;
-
-                        Task twss = Task.Run(async () =>
-                        {
-                            while (!_isStop)
-                            {
-                                try
-                                {
-                                    if (!clientWssAccepted.Client.Connected)
-                                    {
-                                        if (wss1stRequestOfHandShake != null)
-                                        {
-                                            WebsocketServerHub.Remove(wss1stRequestOfHandShake.UrlRelative);
-                                        }
-                                        await Shutdown(clientWssAccepted.Client, wss1stRequestOfHandShake);
-                                        break;
-                                    }
-
-                                    while (!clientStream.DataAvailable) ;
-                                    while (clientWssAccepted.Available < 3) ; // match against "get"
-
-                                    byte[] wssReceivedBytes = new byte[clientWssAccepted.Available];
-                                    await clientStream.ReadAsync(wssReceivedBytes, 0, clientWssAccepted.Available);
-
-                                    var handShakeRequest = await WebsocketServerHub.DoHandShaking(clientWssAccepted, clientStream, wssReceivedBytes);
-
-                                    if (handShakeRequest != null && wss1stRequestOfHandShake == null)
-                                    {
-                                        wss1stRequestOfHandShake = handShakeRequest.Copy();
-                                        wss1stRequestOfHandShake.RemoteEndPoint = clientWssAccepted.Client.RemoteEndPoint.ToString();
-                                    }
-
-                                    var requestWss = await WebsocketServerHub.BuildNextRequestToPublish(wssReceivedBytes, wss1stRequestOfHandShake.Copy());
-                                    if (requestWss != null)
-                                    {
-                                        var wssResponse = await RoutingHandler.HandleWss(requestWss);
-
-                                        if (wssResponse != null)
-                                        {
-                                            WebsocketServerHub.Send(clientWssAccepted, clientStream, wssResponse);
-                                        }
-                                        else
-                                        {
-                                            clientStream.Flush();
-                                        }
-                                    }
-
-                                }
-                                catch (Exception exws)
-                                {
-                                    Console.WriteLine(exws.Message);
-                                    Console.WriteLine(JsonConvert.SerializeObject(exws));
-                                }
-                                finally
-                                {
-                                    await Task.Delay(1);
-                                }
-                            }
-
-                        });
+                        await WebsocketBuildRequestThenHandle(tcpListener);
 
                     }
                     else
                     {
-                        //WebHostWorker will try accept its job
-                        Socket clientSocket = await tcpListener.AcceptSocketAsync();
-                        //parse request then dispatched by RoutingHandler
-                        var t = Task.Run(async () =>
-                        {
-                            Task<HttpRequest> tRequest = ReadByteFromClientSocketAndBuildRequest(clientSocket);
-
-                            HttpRequest request = new HttpRequest
-                            {
-                                CreatedAt = DateTime.Now,
-                                RemoteEndPoint = clientSocket.RemoteEndPoint.ToString()
-                            };
-
-                            var tempRequest = await tRequest;
-
-                            request.Body = tempRequest.Body;
-                            request.Error = tempRequest.Error;
-                            request.Header = tempRequest.Header;
-                            request.HeadlerCollection = tempRequest.HeadlerCollection;
-                            request.HttpVersion = tempRequest.HttpVersion;
-                            request.Method = tempRequest.Method;
-                            request.QueryParamCollection = tempRequest.QueryParamCollection;
-                            request.Url = tempRequest.Url;
-                            request.UrlRelative = tempRequest.UrlRelative;
-                            request.UrlQueryString = tempRequest.UrlQueryString;
-
-                            //dispatched routing here
-                            var processedResult = await RoutingHandler.Handle(request);
-
-                            HttpResponse response = await HttpTransform.BuildHttpResponse(processedResult, request);
-
-                            await SendResponseToClientSocket(clientSocket, request, response);
-
-                            await Shutdown(clientSocket, request);
-
-                            HttpLogger.Log(request);
-
-                            Console.WriteLine($"{request.RemoteEndPoint}@{request.CreatedAt}=>{request.Method}:{request.Url}");
-                        });
+                        await WebHttpBuildRequestThenHandle(tcpListener);
 
                     }
 
@@ -238,9 +141,119 @@ namespace MiniMvc.Core
                 }
                 finally
                 {
-                    await Task.Delay(1);
+                    //await Task.Delay(1);
                 }
             }
+        }
+
+        async Task WebsocketBuildRequestThenHandle(TcpListener tcpListener)
+        {
+            //https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_server
+            TcpClient clientWssAccepted = await tcpListener.AcceptTcpClientAsync();
+            NetworkStream clientStream = clientWssAccepted.GetStream();
+            HttpRequest wss1stRequestOfHandShake = null;
+
+            Task twss = Task.Run(async () =>
+            {
+                while (!_isStop)
+                {
+                    try
+                    {
+                        if (!clientWssAccepted.Client.Connected)
+                        {
+                            if (wss1stRequestOfHandShake != null)
+                            {
+                                WebsocketServerHub.Remove(wss1stRequestOfHandShake.UrlRelative);
+                            }
+                            await Shutdown(clientWssAccepted.Client, wss1stRequestOfHandShake);
+                            break;
+                        }
+
+                        while (!clientStream.DataAvailable) ;
+                        while (clientWssAccepted.Available < 3) ; // match against "get"
+
+                        byte[] wssReceivedBytes = new byte[clientWssAccepted.Available];
+                        await clientStream.ReadAsync(wssReceivedBytes, 0, clientWssAccepted.Available);
+
+                        var handShakeRequest = await WebsocketServerHub.DoHandShaking(clientWssAccepted, clientStream, wssReceivedBytes);
+
+                        if (handShakeRequest != null && wss1stRequestOfHandShake == null)
+                        {
+                            wss1stRequestOfHandShake = handShakeRequest.Copy();
+                            wss1stRequestOfHandShake.RemoteEndPoint = clientWssAccepted.Client.RemoteEndPoint.ToString();
+                        }
+
+                        var requestWss = await WebsocketServerHub.BuildNextRequestWss(wssReceivedBytes, wss1stRequestOfHandShake.Copy());
+                        if (requestWss != null)
+                        {
+                            var wssResponse = await RoutingHandler.HandleWss(requestWss);
+
+                            if (wssResponse != null)
+                            {
+                               await WebsocketServerHub.Send(clientWssAccepted, clientStream, wssResponse);
+                            }
+                            else
+                            {
+                                clientStream.Flush();
+                            }
+                        }
+
+                    }
+                    catch (Exception exws)
+                    {
+                        Console.WriteLine(exws.Message);
+                        Console.WriteLine(JsonConvert.SerializeObject(exws));
+                    }
+                    finally
+                    {
+                        //await Task.Delay(1);
+                    }
+                }
+
+            });
+        }
+
+        async Task WebHttpBuildRequestThenHandle(TcpListener tcpListener)
+        {
+            //WebHostWorker will try accept its job
+            Socket clientSocket = await tcpListener.AcceptSocketAsync();
+            //parse request then dispatched by RoutingHandler
+            var t = Task.Run(async () =>
+            {
+                Task<HttpRequest> tRequest = ReadByteFromClientSocketAndBuildRequest(clientSocket);
+
+                HttpRequest request = new HttpRequest
+                {
+                    CreatedAt = DateTime.Now,
+                    RemoteEndPoint = clientSocket.RemoteEndPoint.ToString()
+                };
+
+                var tempRequest = await tRequest;
+
+                request.Body = tempRequest.Body;
+                request.Error = tempRequest.Error;
+                request.Header = tempRequest.Header;
+                request.HeadlerCollection = tempRequest.HeadlerCollection;
+                request.HttpVersion = tempRequest.HttpVersion;
+                request.Method = tempRequest.Method;
+                request.QueryParamCollection = tempRequest.QueryParamCollection;
+                request.Url = tempRequest.Url;
+                request.UrlRelative = tempRequest.UrlRelative;
+                request.UrlQueryString = tempRequest.UrlQueryString;
+
+                //dispatched routing here
+                var processedResult = await RoutingHandler.Handle(request);
+
+                HttpResponse response = await HttpTransform.BuildHttpResponse(processedResult, request);
+
+                await SendResponseToClientSocket(clientSocket, request, response);
+
+                await Shutdown(clientSocket, request);
+
+                //HttpLogger.Log(request);
+
+                Console.WriteLine($"{request.RemoteEndPoint}@{request.CreatedAt}=>{request.Method}:{request.Url}");
+            });
         }
 
         private static async Task SendResponseToClientSocket(Socket socketAccepted, HttpRequest request, HttpResponse response)
