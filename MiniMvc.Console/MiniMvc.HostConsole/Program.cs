@@ -18,8 +18,8 @@ namespace MiniMvc.HostConsole
 
             new WebHostBuilder()
                 .WithDomainOrIp("0.0.0.0")
-                //.WithPort(8777)
-                .WithWssPort(8776)
+                .WithPort(8777)
+                //.WithWssPort(8776)
                 .WithWebSocketHandle("/channel1", async (request) =>
                 {
 

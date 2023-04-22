@@ -26,7 +26,7 @@ namespace MiniMvc.Core
         int _bufferLength = 8192;
 
         static Random _bufRandom = new Random();
-        //todo play sum fun,  _bufferLength=8192 commonly better
+        //todo play some fun,  _bufferLength=8192 commonly better
         static List<int> _bufList = new List<int> { 256, 512, 1024, 1024 * 2, 1024 * 4, 1024 * 8, 1024 * 16, 1024 * 32, 1024 * 64 };
 
         int _poolSize = -1;
