@@ -23,7 +23,12 @@ namespace MiniMvc.Core
         static ConcurrentDictionary<string, TcpListener> _listTcpListener = new ConcurrentDictionary<string, TcpListener>();
 
         bool _isStop = false;
-        int _bufferLength = 2048;
+        int _bufferLength = 8192;
+
+        static Random _bufRandom = new Random();
+        //todo play sum fun,  _bufferLength=8192 commonly better
+        static List<int> _bufList = new List<int> { 256, 512, 1024, 1024 * 2, 1024 * 4, 1024 * 8, 1024 * 16, 1024 * 32, 1024 * 64 };
+
         int _poolSize = -1;
         bool _isWss = false;
 
@@ -36,7 +41,7 @@ namespace MiniMvc.Core
         /// <param name="port"></param>
         /// <param name="poolSize">-1 unlimit depend on OS</param>
         /// <param name="bufferLength"></param>
-        public HttpSocketAsyncHandleDispatched(string ipOrDomain, int port, int poolSize = -1, int bufferLength = 2048
+        public HttpSocketAsyncHandleDispatched(string ipOrDomain, int port, int poolSize = -1, int bufferLength = 8192
             , Action onStart = null, bool isWss = false)
         {
             _bufferLength = bufferLength;
@@ -136,8 +141,8 @@ namespace MiniMvc.Core
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.Message);
-                    Console.WriteLine(JsonConvert.SerializeObject(ex));
+                    Console.WriteLine($"LoopInternalStartAcceptIncommingAsync {ex.Message}");
+                    //Console.WriteLine(JsonConvert.SerializeObject(ex));
                 }
                 finally
                 {
@@ -148,8 +153,15 @@ namespace MiniMvc.Core
 
         async Task WebsocketBuildRequestThenHandle(TcpListener tcpListener)
         {
+            //todo: can do semaphore lock here to keep total concurrent request need process at a time
+
             //https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_server
             TcpClient clientWssAccepted = await tcpListener.AcceptTcpClientAsync();
+
+            var sendBuffSize = _bufList[_bufRandom.Next(0, 8)];
+            clientWssAccepted.SendBufferSize = sendBuffSize;
+            clientWssAccepted.ReceiveBufferSize = sendBuffSize;
+
             NetworkStream clientStream = clientWssAccepted.GetStream();
             HttpRequest wss1stRequestOfHandShake = null;
 
@@ -183,14 +195,14 @@ namespace MiniMvc.Core
                             wss1stRequestOfHandShake.RemoteEndPoint = clientWssAccepted.Client.RemoteEndPoint.ToString();
                         }
 
-                        var requestWss = await WebsocketServerHub.BuildNextRequestWss(wssReceivedBytes, wss1stRequestOfHandShake.Copy());
+                        var requestWss = await WebsocketServerHub.BuildNextRequestWss(wssReceivedBytes, wss1stRequestOfHandShake);
                         if (requestWss != null)
                         {
                             var wssResponse = await RoutingHandler.HandleWss(requestWss);
 
                             if (wssResponse != null)
                             {
-                               await WebsocketServerHub.Send(clientWssAccepted, clientStream, wssResponse);
+                                await WebsocketServerHub.Send(clientWssAccepted, clientStream, wssResponse);
                             }
                             else
                             {
@@ -201,8 +213,8 @@ namespace MiniMvc.Core
                     }
                     catch (Exception exws)
                     {
-                        Console.WriteLine(exws.Message);
-                        Console.WriteLine(JsonConvert.SerializeObject(exws));
+                        Console.WriteLine($"WebsocketBuildRequestThenHandle {exws.Message}");
+                        //Console.WriteLine(JsonConvert.SerializeObject(exws));
                     }
                     finally
                     {
@@ -215,8 +227,15 @@ namespace MiniMvc.Core
 
         async Task WebHttpBuildRequestThenHandle(TcpListener tcpListener)
         {
+            //todo: can do semaphore lock here to keep total concurrent request need process at a time
+
             //WebHostWorker will try accept its job
             Socket clientSocket = await tcpListener.AcceptSocketAsync();
+
+            var sendBuffSize = _bufList[_bufRandom.Next(0, 8)];
+            clientSocket.SendBufferSize = sendBuffSize;
+            clientSocket.ReceiveBufferSize = sendBuffSize;
+
             //parse request then dispatched by RoutingHandler
             var t = Task.Run(async () =>
             {
@@ -264,7 +283,7 @@ namespace MiniMvc.Core
                 {
                     if (socketAccepted.Connected && response != null)
                     {
-                        var rh = socketAccepted.Send(response.HeaderInByte, response.HeaderInByte.Length, SocketFlags.None);
+                        var rh = socketAccepted.Send(response.HeaderInByte);//, response.HeaderInByte.Length, SocketFlags.None);
 
                         if (rh == -1)
                         {
@@ -272,7 +291,7 @@ namespace MiniMvc.Core
                         }
                         else
                         {
-                            var rb = socketAccepted.Send(response.BodyInByte, response.BodyInByte.Length, SocketFlags.None);
+                            var rb = socketAccepted.Send(response.BodyInByte);//, response.BodyInByte.Length, SocketFlags.None);
                             if (rb == -1)
                             {
                                 Console.WriteLine($"Can not send body to {socketAccepted.RemoteEndPoint}");
@@ -282,7 +301,7 @@ namespace MiniMvc.Core
                 }
                 catch (Exception socketEx)
                 {
-                    Console.WriteLine(socketEx.Message);
+                    Console.WriteLine($"SendResponseToClientSocket {socketEx.Message}");
                     if (request != null)
                         Console.WriteLine(JsonConvert.SerializeObject(request));
                 }
@@ -307,7 +326,10 @@ namespace MiniMvc.Core
 
         private async Task<HttpRequest> ReadByteFromClientSocketAndBuildRequest(Socket socketAccepted)
         {
-            byte[] bufferReceive = new byte[_bufferLength];
+
+            var bufLen = socketAccepted.ReceiveBufferSize;
+
+            byte[] bufferReceive = new byte[bufLen];
 
             using (var received = new MemoryStream())
             {
@@ -321,7 +343,7 @@ namespace MiniMvc.Core
 
                     received.Write(bufferReceive, 0, receiveLength);
 
-                    if (receiveLength <= _bufferLength)
+                    if (receiveLength <= bufLen)
                     {
                         break;
                     }

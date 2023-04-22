@@ -50,13 +50,13 @@ namespace MiniMvc.Core
             return this;
         }
 
-        public WebHostBuilder WithNumberOfWorker(int numberOfWorker)
-        {
-            if (numberOfWorker <= 0) numberOfWorker = 3;
+        // public WebHostBuilder WithNumberOfWorker(int numberOfWorker)
+        // {
+        //     if (numberOfWorker <= 0) numberOfWorker = 3;
 
-            _numberOfWorker = numberOfWorker;
-            return this;
-        }
+        //     _numberOfWorker = numberOfWorker;
+        //     return this;
+        // }
 
         public WebHostBuilder WithRoutingHandle(HttpMethod method, string urlRelative, Func<HttpRequest, Task<IResponse>> action)
         {

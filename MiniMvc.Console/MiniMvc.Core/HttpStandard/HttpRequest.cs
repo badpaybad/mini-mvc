@@ -47,6 +47,7 @@ namespace MiniMvc.Core.HttpStandard
                 Url = this.Url,
                 UrlQueryString = this.UrlQueryString,
                 UrlRelative = this.UrlRelative,
+                Id = this.Id,
             };
         }
 
