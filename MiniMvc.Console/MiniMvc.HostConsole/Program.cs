@@ -25,7 +25,8 @@ namespace MiniMvc.HostConsole
 
                     Console.WriteLine($"received from web browser client: {JsonConvert.SerializeObject(request)}");
 
-                    await Task.Delay(1);
+
+                    await Task.Yield();
 
                     return null;// Return null if dont want send back to client, in clien :  websocket.onmessage = function (e) {}
 
@@ -44,7 +45,8 @@ namespace MiniMvc.HostConsole
                 .WithRoutingHandle(HttpMethod.Get, "/index", Index)
                 .WithRoutingHandle(HttpMethod.Get, "/about", async (request) =>
                  {
-                     await Task.Delay(1);
+
+                     await Task.Yield();
                      return new AboutResponse()
                      {
                          Copyright = "badpaybad@gmail.com",
@@ -93,7 +95,7 @@ namespace MiniMvc.HostConsole
 
         static async Task<IResponse> Index(HttpRequest request)
         {
-            await Task.Delay(1);
+            await Task.Yield();
 
             return new IndexResponse()
             {
